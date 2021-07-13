@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Set of parameters useful in any module.
+"""Set of variables and parameters for program execution.
 
-This module gathers a set of execution parameters that are useful in many other modules. When a 
+This module gathers a set of execution parameters which are useful in many other modules. When a 
 parameter is widely used in different modules, a general version of it is created and 
 can be found here.
 
 Typical usage example:
-
-  Context().get_input_csv()
+  Context().tag = args.tag
 """
 
 # Generic/Built-in modules
@@ -42,42 +41,17 @@ class Context(metaclass=SingletonMeta):
         _listcat_result: A list, the name of the text file(s) that contains the listcat command result.
         _tag: A string, the tag option used by the user.
         _today_date: A string, the date of today respecting a certain format.
-        _work_directory: A string, working directory for the program execution.
-        _dataset_directory: A string, located under the working directory, this directory contains all downloaded datasets.
+
         _conversion_directory: A string, located under the working directory, this directory contains all converted datasets 
             that are cleared after each migration (useless files).
         _copybook_directory: A string, the location of the copybook directory tracked with git.
+        _dataset_directory: A string, located under the working directory, this directory contains all downloaded datasets.
         _log_directory: A string, located under the working directory, this directory contains the logs of each execution of 
             oftools_dsmigin.
+        _work_directory: A string, working directory for the program execution.
 
     Methods:
         __init__(): Initializes all attributes of the context.
-        get_input_csv(): Getter method for the input CSV file.
-        set_input_csv(input_csv): Setter method for the input CSV file.
-        get_migration_type(): Getter method for the migration type.
-        set_migration_type(migration_type): Setter method for the migration type.
-        get_encoding_code(): Getter method for the encoding code for the migration.
-        set_encoding_code(encoding_code): Setter method for the encoding code for the migration.
-        get_number(): Getter method for the number of datasets to download in the current execution.
-        set_number(number): Setter method for the number of datasets to download in the current execution.
-        get_ip_address(): Getter method for the IP address of the mainframe server.
-        set_ip_address(ip_address): Setter method for the IP address of the mainframe server.
-        get_listcat_result(): Getter method for the text file(s) containing the listcat command result.
-        set_listcat_result(listcat_result): Setter method for the text file(s) containing the listcat command result.
-        get_tag(): Getter method for the tag input from the user.
-        set_tag(tag): Setter method for the tag input from the user.
-        get_today_date(): Getter method for the date of today.
-        set_today_date(): Setter method for the date of today.
-        get_work_directory(): Getter method for the work directory location.
-        set_work_directory(work_directory): Setter method for the work directory location.
-        get_dataset_directory(): Getter method for the dataset directory location, under the work directory.
-        set_dataset_directory(): Setter method for the dataset directory location, under the work directory.
-        get_conversion_directory(): Getter method for the converted datasets directory location, under the work directory.
-        set_conversion_directory(): Setter method for the converted datasets directory location, under the work directory.
-        get_copybook_directory(): Getter method for the copybook directory location.
-        set_copybook_directory(): Setter method for the copybook directory location.
-        get_log_directory(): Getter method for the log directory location, under the work directory.
-        set_log_directory(): Setter method for the log directory location, under the work directory.
     """
 
     def __init__(self):
@@ -91,76 +65,95 @@ class Context(metaclass=SingletonMeta):
         self._listcat_result = ''
         self._tag = ''
         self._today_date = ''
-        self._work_directory = ''
-        self._dataset_directory = ''
+
+        # Directories
         self._conversion_directory = ''
         self._copybook_directory = ''
+        self._dataset_directory = ''
         self._log_directory = ''
+        self._work_directory = ''
 
-    def get_input_csv(self):
-        """Getter method for the input CSV file.
+    @property
+    def input_csv(self):
+        """Getter method for the attribute _input_csv.
         """
         return self._input_csv
 
-    def set_input_csv(self, input_csv):
-        """Setter method for the input CSV file.
-
-        Only if the input CSV file has been correctly specified, it creates the absolute path to the CSV file.
+    @input_csv.setter
+    def input_csv(self, input_csv):
+        """Setter method for the attribute _input_csv.
         """
         if input_csv is not None:
+            #TODO update this path that might cause an issue if the csv specified by the user is already absolute path
             self._input_csv = os.getcwd() + '/' + input_csv
 
-    def get_migration_type(self):
-        """Getter method for the migration type.
+    @property
+    def migration_type(self):
+        """Getter method for the attribute _migration_type.
         """
         return self._migration_type
 
-    def set_migration_type(self, migration_type):
-        """Setter method for the migration type.
+    @migration_type.setter
+    def migration_type(self, migration_type):
+        """Setter method for the attribute _migration_type.
         """
         if migration_type is not None:
             self._migration_type = migration_type
 
-    def get_encoding_code(self):
-        """Getter method for the encoding code for the migration.
+    @property
+    def encoding_code(self):
+        """Getter method for the attribute _encoding_code.
         """
         return self._encoding_code
 
-    def set_encoding_code(self, encoding_code):
-        """Setter method for the encoding code for the migration.
+    @encoding_code.setter
+    def encoding_code(self, encoding_code):
+        """Setter method for the attribute _encoding_code.
         """
         if encoding_code is not None:
             self._encoding_code = encoding_code
 
-    def get_number(self):
-        """Getter method for the number of datasets to download in the current execution.
+    @property
+    def number(self):
+        """Getter method for the attribute _number. 
+        
+        Number of datasets to download in the current execution.
         """
         return self._number
 
-    def set_number(self, number):
-        """Setter method for the number of datasets to download in the current execution.
+    @number.setter
+    def number(self, number):
+        """Setter method for the attribute _number.
         """
         if number is not None:
             self._number = number
 
-    def get_ip_address(self):
-        """Getter method for the IP address of the mainframe server.
+    @property
+    def ip_address(self):
+        """Getter method for the attribute _ip_address.
+        
+        Mainframe server.
         """
         return self._ip_address
 
-    def set_ip_address(self, ip_address):
-        """Setter method for the IP address of the mainframe server.
+    @ip_address.setter
+    def ip_address(self, ip_address):
+        """Setter method for the attribute _ip_address.
         """
         if ip_address is not None:
             self._ip_address = ip_address
 
-    def get_listcat_result(self):
-        """Getter method for the text file(s) containing the listcat command result.
+    @property
+    def listcat_result(self):
+        """Getter method for the attribute _listcat_result.
+        
+        text file(s) containing the listcat command result.
         """
         return self._listcat_result
 
-    def set_listcat_result(self, listcat_result):
-        """Setter method for the text file(s) containing the listcat command result.
+    @listcat_result.setter
+    def listcat_result(self, listcat_result):
+        """Setter method for the attribute _listcat_result.
 
         It first analyzes if the listcat_result has been specified and create an absolute path if necessary. Then it analyzes if the listcat result specified is a directory or a file, and creates the actual listcat_result list used for the execution of the program.
         """
@@ -185,37 +178,119 @@ class Context(metaclass=SingletonMeta):
 
         self._listcat_result = listcat_list
 
-    def get_tag(self):
-        """Getter method for the tag input from the user.
+    @property
+    def tag(self):
+        """Getter method for the attribute tag.
         """
         return self._tag
 
-    def set_tag(self, tag):
-        """Setter method for the tag input from the user.
+    @tag.setter
+    def tag(self, tag):
+        """Setter method for the attribute tag.
         """
         if tag is not None:
-            self._tag = tag
+            self._tag = '_' + tag
 
-    def get_today_date(self):
-        """Getter method for the date of today.
+    @property
+    def today_date(self):
+        """Getter method for the attribute _today_date.
         """
         return self._today_date
 
-    def set_today_date(self):
-        """Setter method for the date of today.
+    @today_date.setter
+    def today_date(self):
+        """Setter method for the attribute _today_date.
 
         Set the date of today following a specific format.
         """
         today = datetime.datetime.today()
         self._today_date = today.strftime('%Y-%m-%d')
+    
+    @property
+    def conversion_directory(self):
+        """Getter method for the attribute _conversion_directory.
 
-    def get_work_directory(self):
-        """Getter method for the work directory location.
+        converted datasets directory location
+        """
+        return self._conversion_directory
+
+    @conversion_directory.setter
+    def conversion_directory(self):
+        """Setter method for the _conversion_directory.
+
+        Create the directory if it does not already exists.
+        """
+        try:
+            self._conversion_directory = self._work_directory + '/conversion'
+            if not os.path.exists(self._conversion_directory):
+                os.mkdirs(self._conversion_directory)
+        except:
+            print(
+                'Dataset conversion directory creation failed. Permission denied.'
+            )
+    
+    @property
+    def copybook_directory(self):
+        """Getter method for the attribute _copybook_directory.
+        """
+        return self._copybook_directory
+
+    @copybook_directory.setter
+    def copybook_directory(self, copybook_directory):
+        """Setter method for the attribute _copybook_directory.
+        """
+        if copybook_directory is not None and not copybook_directory.startswith('/'):
+            self._copybook_directory = os.getcwd() + '/' + copybook_directory
+        else:
+            self._copybook_directory = copybook_directory
+
+    @property
+    def dataset_directory(self):
+        """Getter method for the attribute _dataset_directory.
+        """
+        return self._dataset_directory
+
+    @dataset_directory.setter
+    def dataset_directory(self):
+        """Setter method for the attribute _dataset_directory.
+
+        Create the directory if it does not already exists.
+        """
+        try:
+            self._dataset_directory = self._work_directory + '/datasets'
+            if not os.path.exists(self._dataset_directory):
+                os.mkdirs(self._dataset_directory)
+        except:
+            print('Dataset directory creation failed. Permission denied.')
+
+    @property
+    def log_directory(self):
+        """Getter method for the attribute _log_directory.
+        """
+        return self._log_directory
+
+    @log_directory.setter
+    def log_directory(self):
+        """Setter method for the attribute _log_directory.
+
+        Create the directory if it does not already exists.
+        """
+        try:
+            self._log_directory = self._work_directory + '/logs'
+            if not os.path.exists(self._log_directory):
+                os.mkdirs(self._log_directory)
+        except:
+            print('Logs directory creation failed. Permission denied.')
+
+    @property
+    def work_directory(self):
+        """Getter method for the attribute _work_directory.
         """
         return self._work_directory
 
-    def set_work_directory(self, work_directory):
-        """Setter method for the work directory location.
+    @work_directory.setter
+    def work_directory(self, work_directory):
+        """Setter method for the attribute _work_directory.
 
         Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already.
         """
@@ -229,69 +304,3 @@ class Context(metaclass=SingletonMeta):
                 os.mkdirs(self._work_directory)
         except:
             print('Working directory creation failed. Permission denied.')
-
-    def get_dataset_directory(self):
-        """Getter method for the dataset directory location, under the work directory.
-        """
-        return self._dataset_directory
-
-    def set_dataset_directory(self):
-        """Setter method for the dataset directory location, under the work directory.
-
-        Create the directory if it does not already exists.
-        """
-        try:
-            self._dataset_directory = self._work_directory + '/datasets'
-            if not os.path.exists(self._dataset_directory):
-                os.mkdirs(self._dataset_directory)
-        except:
-            print('Dataset directory creation failed. Permission denied.')
-
-    def get_conversion_directory(self):
-        """Getter method for the converted datasets directory location, under the work directory.
-        """
-        return self._conversion_directory
-
-    def set_conversion_directory(self):
-        """Setter method for the converted datasets directory location, under the work directory.
-
-        Create the directory if it does not already exists.
-        """
-        try:
-            self._conversion_directory = self._work_directory + '/conversion'
-            if not os.path.exists(self._conversion_directory):
-                os.mkdirs(self._conversion_directory)
-        except:
-            print(
-                'Dataset conversion directory creation failed. Permission denied.'
-            )
-
-    def get_copybook_directory(self):
-        """Getter method for the copybook directory location.
-        """
-        return self._copybook_directory
-
-    def set_copybook_directory(self, copybook_directory):
-        """Setter method for the copybook directory location.
-        """
-        if copybook_directory is not None and not copybook_directory.startswith('/'):
-            self._copybook_directory = os.getcwd() + '/' + copybook_directory
-        else:
-            self._copybook_directory = copybook_directory
-
-    def get_log_directory(self):
-        """Getter method for the log directory location, under the work directory.
-        """
-        return self._log_directory
-
-    def set_log_directory(self):
-        """Setter method for the log directory location, under the work directory.
-
-        Create the directory if it does not already exists.
-        """
-        try:
-            self._log_directory = self._work_directory + '/logs'
-            if not os.path.exists(self._log_directory):
-                os.mkdirs(self._log_directory)
-        except:
-            print('Logs directory creation failed. Permission denied.')
