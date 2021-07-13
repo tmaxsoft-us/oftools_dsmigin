@@ -17,7 +17,7 @@ from .Context import Context
 from .MigrationEnum import Col
 
 
-class Listcat():
+class Listcat(object):
     """A class to update certain fields in the CSV file regarding the VSAM datasets using the result of the comman listcat executed in the mainframe.
 
     Attributes:

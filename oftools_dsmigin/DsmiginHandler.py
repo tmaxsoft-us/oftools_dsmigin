@@ -22,7 +22,7 @@ from .MigrationEnum import Col
 from .Utils import Utils
 
 
-class DSMIGINHandler():
+class DSMIGINHandler(object):
     """A class used to perform all task regarding dataset migration depending mainly on the dataset organization, the DSORG column of the CSV file.
 
     Attributes:

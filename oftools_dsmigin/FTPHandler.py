@@ -22,7 +22,7 @@ from .MigrationEnum import Col
 from .Utils import Utils
 
 
-class FTPHandler():
+class FTPHandler(object):
     """A class used to perform all task regarding FTP and interactions with the mainframe.
 
     Attributes:

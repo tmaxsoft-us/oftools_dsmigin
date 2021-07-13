@@ -21,7 +21,7 @@ def main():
     return Main().run()
 
 
-class Main:
+class Main(object):
     """
 
     Methods:

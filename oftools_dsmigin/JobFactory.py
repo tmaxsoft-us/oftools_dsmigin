@@ -19,7 +19,7 @@ from .MigrationJob import MigrationJob
 from .UpdateJob import UpdateJob
 
 
-class JobFactory:
+class JobFactory(object):
     """Class following the Factory pattern to execute different jobs depending on the user input.
 
     Methods:

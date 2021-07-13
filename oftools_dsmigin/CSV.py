@@ -22,7 +22,7 @@ from .Context import Context
 from .MigrationEnum import Col
 
 
-class CSV():
+class CSV(object):
     """A class used to manipulate the CSV file , read and write tasks but also backup and other smaller features.
 
     Attributes:

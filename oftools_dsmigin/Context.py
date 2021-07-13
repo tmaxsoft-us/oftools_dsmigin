@@ -29,7 +29,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class Context(metaclass=SingletonMeta):
+class Context(object, metaclass=SingletonMeta):
     """A class used as a parameter library for the execution of the program.
 
     Attributes:

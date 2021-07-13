@@ -20,7 +20,7 @@ from .Context import Context
 from .MigrationEnum import Col
 
 
-class Statistics():
+class Statistics(object):
     """A class used to compute statistics on the CSV file regarding the success/failure of the download/migration execution.
 
     Attributes:

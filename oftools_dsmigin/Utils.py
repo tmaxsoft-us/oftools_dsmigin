@@ -32,7 +32,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class Utils(metaclass=SingletonMeta):
+class Utils(object, metaclass=SingletonMeta):
     """A class used to run several useful functions.
 
     Attributes:
@@ -74,11 +74,11 @@ class Utils(metaclass=SingletonMeta):
         if self.check_command(shell_command.split()[0]):
             try:
                 proc = subprocess.Popen(shell_command,
-                                    shell=True,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
+                                        shell=True,
+                                        stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE)
                 proc.communicate()[0]
-                
+
                 shell_result = proc.stdout.decode('utf_8')
                 if ('failed' in shell_result) or (
                         'command not found' in shell_result) or (
@@ -97,7 +97,7 @@ class Utils(metaclass=SingletonMeta):
         This method is dedicated to execute a ftp command and it handles exception in case of failure. The credentials to open the FTP session are provided through the file .netrc in the home directory. This configuration file needs to be created before the first execution of the tool.
         """
         # ! We might need to use sftp (FTP over SSH) with more security
-        # ! By default, connection refused on port 22. After modification of 
+        # ! By default, connection refused on port 22. After modification of
         # ! the PROFILE to add TCP connection on port 22, still not working
 
         connection_command = 'lftp << EOF\nlftp ' + self._ip_address + '\n'
@@ -106,9 +106,9 @@ class Utils(metaclass=SingletonMeta):
         if self.check_command(shell_command.split()[0]):
             try:
                 proc = subprocess.Popen(shell_command,
-                                    shell=True,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
+                                        shell=True,
+                                        stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE)
                 proc.communicate()[0]
 
                 shell_result = proc.stdout.decode('utf_8')
