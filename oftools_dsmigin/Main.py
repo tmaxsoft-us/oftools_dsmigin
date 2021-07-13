@@ -6,6 +6,7 @@
 # Generic/Built-in modules
 import argparse
 import os
+import sys
 import traceback
 
 # Third-party modules
@@ -22,144 +23,155 @@ def main():
 
 
 class Main(object):
-    """
+    """Main class containing the methods for parsing the command arguments and running OpenFrame Tools 
+    Dataset Migration.
 
     Methods:
         _parse_arg(): Parsing command-line options.
         _evaluate_ip_address(ip_address): Checking the format of the ip address used as a parameter.
-        run(): Perform to execute jobs of OFTools DSMigin.
+        run(): Perform to execute jobs of OpenFrame Tools Dataset Migration.
     """
 
     def _parse_arg(self):
         """Parsing command-line options.
 
         The program defines what arguments it requires, and argparse will figure out how to parse 
-        those out of sys.argv. The argparse module also automatically generates help and usage 
+        those out of sys.argv. The argparse module also automatically generates help, usage 
         messages and issues errors when users give the program invalid arguments.
 
         Returns:
             args, an ArgumentParser object.
         """
-        arg_parser = argparse.ArgumentParser(prog='oftools_dsmigin')
+        parser = argparse.ArgumentParser(
+            add_help=False, description='OpenFrame Tools Dataset Migration')
+        parser._action_groups.pop()
+        required = parser.add_argument_group('Required arguments')
+        optional = parser.add_argument_group('Optional arguments')
 
-        # Mandatory arguments
-        arg_parser.add_argument(
+        # Required arguments
+        required.add_argument(
             '-c',
             '--csv',
             action='store',  # optional because default action is 'store'
             dest='input_csv',
             help=
-            'Mandatory CSV file name for either csv update, liscat, dataset dowload or migration',
+            'name of the CSV file, contains the datasets and their parameters',
             metavar='FILENAME',
-            required=True)
+            required=True,
+            type=str)
 
-        arg_parser.add_argument(
-            '-w',
-            '--work-directory',
-            action='store',
-            dest='work_directory',
-            help='Set working directory for dataset migration',
-            metavar='DIRECTORY',
-            required=True)
+        required.add_argument('-w',
+                              '--work-directory',
+                              action='store',
+                              dest='work_directory',
+                              help='path of the work directory',
+                              metavar='DIRECTORY',
+                              required=True,
+                              type=str)
 
         # Optional arguments
-        arg_parser.add_argument('-d',
-                                '--download',
-                                action='store_false',
-                                dest='download',
-                                help='Trigger FTP to start dataset download',
-                                required=False)
+        #TODO MAke it possible to specify a list of directories, separated with a ':'
+        optional.add_argument('-C',
+                              '--copybook-directory',
+                              action='store',
+                              dest='copybook_directory',
+                              help='path of the copybook directory',
+                              metavar='DIRECTORY',
+                              required=False,
+                              type=str)
 
-        arg_parser.add_argument(
+        optional.add_argument('-d',
+                              '--download',
+                              action='store_true',
+                              dest='download',
+                              help='trigger FTP to start dataset download',
+                              required=False)
+
+        optional.add_argument(
             '-m',
             '--migration',
             action='store',
+            choices=['C', 'G'],
             dest='migration',
-            help='''Trigger dsmigin for dataset migration. Potential options:
-                                'G' for dataset conversion & generation 
-                                'C' for dataset conversion ONLY''',
+            help='''trigger dsmigin to start dataset migration. Potential options:
+                                'C' for dataset conversion ONLY
+                                'G' for dataset conversion & generation''',
             metavar='FLAG',
-            required=False)
+            required=False,
+            type=str)
 
-        arg_parser.add_argument(
+        optional.add_argument(
             '-l',
             '--listcat',
             action='store',
             dest='listcat_result',
             help=
-            'Listcat result file name / directory, required for CSV file containing VSAM dataset info',
+            'name of the listcat result file/directory, required if the CSV file contains VSAM dataset info',
             metavar='FILENAME/DIRECTORY',
-            required=False)
+            required=False,
+            type=str)
 
-        arg_parser.add_argument(
-            '-u',
-            '--update',
-            action='store_false',
-            dest='update',
-            help='Trigger CSV file update based on FTP information',
-            required=False)
+        optional.add_argument(
+            '-L',
+            '--log-level',
+            action='store',
+            choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+            default='INFO',
+            dest='log_level',
+            help=
+            'set log level, potential values: DEBUG, INFO, WARNING, ERROR, CRITICAL. (default: INFO)',
+            metavar='LEVEL',
+            required=False,
+            type=str)
 
         # It is not possible to handle datasets download at once, there is a certain timeout using FTP to download from the mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little.
-        arg_parser.add_argument('-n',
-                                '--number',
-                                action='store',
-                                dest='number',
-                                help='Number of datasets to be handled',
-                                metavar='INTEGER',
-                                required=False,
-                                type=int)
+        optional.add_argument('-n',
+                              '--number',
+                              action='store',
+                              dest='number_datasets',
+                              help='set the number of datasets to be handled',
+                              metavar='INTEGER',
+                              required=False,
+                              type=int)
 
-        arg_parser.add_argument(
+        optional.add_argument(
             '-p',
             '--ip-address',
             action='store',
             dest='ip_address',
             help=
-            'IP address required for any command that required an FTP execution',
+            'ip address required for any command that involves FTP execution',
             metavar='IP_ADDRESS',
-            required=False)
+            required=False,
+            type=str)
 
-        arg_parser.add_argument(
-            '-C',
-            '--copybook-directory',
-            action='store',
-            dest='copybook_directory',
-            help='Set copybook directory for dataset migration',
-            metavar='DIRECTORY',
-            required=False)
+        optional.add_argument('-t',
+                              '--tag',
+                              action='store',
+                              dest='tag',
+                              help='add tag to the name of the CSV file',
+                              metavar='TAG',
+                              required=False,
+                              type=str)
 
-        arg_parser.add_argument('-t',
-                                '--tag',
-                                action='store',
-                                dest='tag',
-                                help='Add tag to the name of CSV file and ...',
-                                metavar='TAG',
-                                required=False)
+        optional.add_argument('-u',
+                              '--update',
+                              action='store_true',
+                              dest='update',
+                              help='trigger CSV file update',
+                              required=False)
 
-        arg_parser.add_argument(
-            '-L',
-            '--log-level',
-            action='store',
-            default='INFO',
-            dest='log_level',
-            help=
-            'Set log level (DEBUG|INFO|WARNING|ERROR|CRITICAL). Default is INFO',
-            metavar='LEVEL',
-            required=False)
+        optional.add_argument('-h',
+                              '--help',
+                              action='help',
+                              help='show this help message and exit')
 
-        arg_parser.add_argument('-v',
-                                '--version',
-                                action='store_true',
-                                help='Print version information',
-                                required=False)
-
-        #    arg_parser.add_argument('-l',
-        #    '--log-directory',
-        #    action='store',
-        #    dest='log',
-        #    help='Specify log directory',
-        #    metavar='DIRECTORY',
-        #    required=False)
+        optional.add_argument(
+            '-v',
+            '--version',
+            action='version',
+            help='show this version message and exit',
+            version='%(prog)s {version}'.format(version=__version__))
 
         #    arg_parser.add_argument('-b',
         #                     '--backup-directory',
@@ -170,11 +182,10 @@ class Main(object):
         #                     required=False)
 
         # Do the parsing
-        args = arg_parser.parse_args()
-
-        # With the argument version specified the method execution stops
-        if args.version is True:
-            return args
+        if len(sys.argv) == 1:
+            parser.print_help(sys.stdout)
+            sys.exit(0)
+        args = parser.parse_args()
 
         # Analyze missing arguments
         if args.input_csv is None:
@@ -231,7 +242,7 @@ class Main(object):
                 print(
                     'Invalid migration option value. Please see the help below for valid values'
                 )
-                arg_parser.print_help()
+                parser.print_help()
                 exit(-1)
 
         # Check that number is above 0
@@ -266,7 +277,7 @@ class Main(object):
                 print(
                     'Invalid -L, --log-level option. Please see the help below for valid values'
                 )
-                arg_parser.print_help()
+                parser.print_help()
                 exit(-1)
 
         return args
