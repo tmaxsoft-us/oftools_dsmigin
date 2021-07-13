@@ -190,13 +190,13 @@ class Main(object):
         # Analyze missing arguments
         if args.input_csv is None:
             print('-c or --csv option is not specified')
-            exit(-1)
+            sys.exit(-1)
         if args.update_csv:
             if args.ip_address is None:
                 print(
                     '-p or --ip-address option must be specified for CSV file update'
                 )
-                exit(-1)
+                sys.exit(-1)
         if args.download:
             if args.ip_address is None or args.number is None:
                 if args.ip_address is None:
@@ -207,13 +207,13 @@ class Main(object):
                     print(
                         '-n or --number option must be specified for dataset download'
                     )
-                exit(-1)
+                sys.exit(-1)
         if args.migration:
             if args.copybook_directory is None:
                 print(
                     '-C or --copybook-directory option must be specified for dataset migration'
                 )
-                exit(-1)
+                sys.exit(-1)
 
         # Analyze CSV file extension
         if args.input_csv:
@@ -222,7 +222,7 @@ class Main(object):
                 print(
                     'Invalid CSV file. Please specify a file with a .csv extension'
                 )
-                exit(-1)
+                sys.exit(-1)
         # Analyze Listcat file extension
         if args.listcat_result:
             if os.path.isdir(args.listcat_result):
@@ -234,7 +234,7 @@ class Main(object):
                     print(
                         'Invalid Listcat file. Please specify a file with a .txt extension'
                     )
-                    exit(-1)
+                    sys.exit(-1)
 
         # Analyze if migration flag has a valid value
         if args.migration:
@@ -243,13 +243,13 @@ class Main(object):
                     'Invalid migration option value. Please see the help below for valid values'
                 )
                 parser.print_help()
-                exit(-1)
+                sys.exit(-1)
 
         # Check that number is above 0
         if args.number:
             if args.number <= 0:
                 print('Invalid -n, --number option. Must be positive')
-                exit(-1)
+                sys.exit(-1)
 
         # Check that the ip address respect valid format
         if args.ip_address:
@@ -258,7 +258,7 @@ class Main(object):
                 print(
                     'Invalid -p, --ip-address option. The IP address specified must respect either IPv4 or IPv6 standard format'
                 )
-                exit(-1)
+                sys.exit(-1)
 
         # Check that the working directory is accessible
         if args.work_directory:
@@ -268,7 +268,7 @@ class Main(object):
                 print(
                     'Invalid -w, --working-directory option. Directory specified not accessible'
                 )
-                exit(-1)
+                sys.exit(-1)
 
         # Analyze if log level has a valid value
         if args.log_level:
@@ -278,7 +278,7 @@ class Main(object):
                     'Invalid -L, --log-level option. Please see the help below for valid values'
                 )
                 parser.print_help()
-                exit(-1)
+                sys.exit(-1)
 
         return args
 
@@ -374,7 +374,7 @@ class Main(object):
         except:
             traceback.print_exc()
             print('Unexpected error detected during the job creation')
-            exit(-1)
+            sys.exit(-1)
 
         # Run jobs
         for job in jobs:

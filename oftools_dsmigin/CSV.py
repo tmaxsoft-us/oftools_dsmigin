@@ -14,6 +14,7 @@ import csv
 import datetime
 import os
 import shutil
+import sys
 
 # Third-party modules
 
@@ -88,7 +89,7 @@ class CSV(object):
             print(
                 'Column names does not match with the program\nInput file:\n' +
                 headers + '\nProgram definition:\n' + self._column_names)
-            exit(-1)
+            sys.exit(-1)
 
         return rc
 
