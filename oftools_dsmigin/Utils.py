@@ -39,15 +39,52 @@ class Utils(object, metaclass=SingletonMeta):
         _ip_address: A string, the ip address of the mainframe to connect to for the FTP execution.
 
     Methods:
+        analyze_ip_address(ip_address): Checking the format of the ip address used as a parameter.
         check_command(shell_command): Check if the command exist in the environment using which.
         execute_shell_command(shell_command): Separate method to execute shell command.
         execute_ftp_command(ftp_command): Separate method to execute FTP command.
     """
 
-    def __init__(self):
-        """Initializes all attributes of the class.
+    def analyze_ip_address(self, ip_address):
+        """Checking the format of the ip address used as a parameter.
+
+        This method is able to detect both IPv4 and IPv6 addresses. It is a really simple pattern analysis.
+
+        Args:
+            ip_address: A string, the ip address used as as a parameter.
+
+        Returns:
+            A boolean, if the ip address used as input is a fully qualified ip address or not.
         """
-        self._ip_address = Context().get_ip_address()
+        is_valid_ip = False
+
+        # IPv4 pattern detection
+        if ip_address.count('.') == 3:
+            fields = ip_address.split('.')
+            is_IPv4 = False
+            for field in fields:
+                if str(int(field)) == field and 0 <= int(field) <= 255:
+                    is_IPv4 = True
+                else:
+                    is_IPv4 = False
+                    break
+            is_valid_ip = is_IPv4
+        # IPv6 pattern detection
+        if ip_address.count(':') == 7:
+            fields = ip_address.split(':')
+            is_IPv6 = False
+            for field in fields:
+                if len(field) > 4:
+                    is_IPv6 = False
+                    break
+                if int(field, 16) >= 0 and field[0] != '-':
+                    is_IPv6 = True
+                else:
+                    is_IPv6 = False
+                    break
+            is_valid_ip = is_IPv6
+
+        return is_valid_ip
 
     def check_command(self, shell_command):
         """Check if the command exist in the environment using which.
@@ -100,7 +137,7 @@ class Utils(object, metaclass=SingletonMeta):
         # ! By default, connection refused on port 22. After modification of
         # ! the PROFILE to add TCP connection on port 22, still not working
 
-        connection_command = 'lftp << EOF\nlftp ' + self._ip_address + '\n'
+        connection_command = 'lftp << EOF\nlftp ' + Context().ip_address + '\n'
         shell_command = connection_command + ftp_command
 
         if self.check_command(shell_command.split()[0]):

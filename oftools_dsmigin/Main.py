@@ -16,6 +16,7 @@ from . import __version__
 from .Context import Context
 from .JobFactory import JobFactory
 from .Log import Log
+from .Utils import Utils
 
 
 def main():
@@ -28,7 +29,6 @@ class Main(object):
 
     Methods:
         _parse_arg(): Parsing command-line options.
-        _evaluate_ip_address(ip_address): Checking the format of the ip address used as a parameter.
         run(): Perform to execute jobs of OpenFrame Tools Dataset Migration.
     """
 
@@ -63,7 +63,7 @@ class Main(object):
         required.add_argument('-w',
                               '--work-directory',
                               action='store',
-                              dest='work_directory',
+                              dest='working_directory',
                               help='path of the work directory',
                               metavar='DIRECTORY',
                               required=True,
@@ -185,143 +185,111 @@ class Main(object):
         if len(sys.argv) == 1:
             parser.print_help(sys.stdout)
             sys.exit(0)
-        args = parser.parse_args()
-
-        # Analyze missing arguments
-        if args.input_csv is None:
-            print('-c or --csv option is not specified')
+        try:
+            args = parser.parse_args()
+        except argparse.ArgumentError as e:
+            Log().logger.critical('ArgumentError: ' + str(e))
             sys.exit(-1)
+
+        # Analyze CSV file, making sure a file with .csv extension is specified
+        try:
+            csv_path = os.path.expandvars(args.input_csv)
+            extension = csv_path.rsplit('.', 1)[1]
+            if extension != 'csv':
+                raise TypeError()
+        except IndexError:
+            Log().logger.critical(
+                'IndexError: Given CSV file does not have a .csv extension: ' +
+                csv_path)
+            sys.exit(-1)
+        except TypeError:
+            Log().logger.critical('TypeError: Expected .csv extension, found ' +
+                                  extension + ': ' + csv_path)
+            sys.exit(-1)
+
+        # Analyze missing optional arguments
+        #? Maybe ip_address should be mandatory?
         if args.update_csv:
             if args.ip_address is None:
                 print(
                     '-p or --ip-address option must be specified for CSV file update'
                 )
                 sys.exit(-1)
+
         if args.download:
-            if args.ip_address is None or args.number is None:
-                if args.ip_address is None:
-                    print(
-                        '-p or --ip-address option must be specified for dataset download'
-                    )
-                if args.number is None:
-                    print(
-                        '-n or --number option must be specified for dataset download'
-                    )
-                sys.exit(-1)
-        if args.migration:
-            if args.copybook_directory is None:
-                print(
-                    '-C or --copybook-directory option must be specified for dataset migration'
-                )
-                sys.exit(-1)
-
-        # Analyze CSV file extension
-        if args.input_csv:
-            extension = args.input_csv.split('.')[1]
-            if extension != 'csv':
-                print(
-                    'Invalid CSV file. Please specify a file with a .csv extension'
-                )
-                sys.exit(-1)
-        # Analyze Listcat file extension
-        if args.listcat_result:
-            if os.path.isdir(args.listcat_result):
-                print('Listcat directory specified.')
-            else:
-                print('Listcat file specified.')
-                extension = args.listcat_result.split('.')[1]
-                if extension != 'txt':
-                    print(
-                        'Invalid Listcat file. Please specify a file with a .txt extension'
-                    )
-                    sys.exit(-1)
-
-        # Analyze if migration flag has a valid value
-        if args.migration:
-            if args.migration not in ('C', 'G'):
-                print(
-                    'Invalid migration option value. Please see the help below for valid values'
-                )
-                parser.print_help()
-                sys.exit(-1)
-
-        # Check that number is above 0
-        if args.number:
-            if args.number <= 0:
-                print('Invalid -n, --number option. Must be positive')
-                sys.exit(-1)
-
-        # Check that the ip address respect valid format
-        if args.ip_address:
-            status = self._evaluate_ip_address(args.ip_address)
-            if status is False:
-                print(
-                    'Invalid -p, --ip-address option. The IP address specified must respect either IPv4 or IPv6 standard format'
-                )
-                sys.exit(-1)
-
-        # Check that the working directory is accessible
-        if args.work_directory:
             try:
-                os.chdir(args.work_directory)
-            except:
-                print(
-                    'Invalid -w, --working-directory option. Directory specified not accessible'
+                if args.ip_address is None:
+                    raise SystemError()
+            except SystemError:
+                Log().logger.critical(
+                    'IpAddressError: -p or --ip-address option must be specified for dataset download'
                 )
                 sys.exit(-1)
 
-        # Analyze if log level has a valid value
-        if args.log_level:
-            if args.log_level not in ('CRITICAL', 'DEBUG', 'ERROR', 'INFO',
-                                      'WARNING'):
-                print(
-                    'Invalid -L, --log-level option. Please see the help below for valid values'
+            try:
+                if args.number is None:
+                    raise SystemError()
+            except SystemError:
+                Log().logger.critical(
+                    'NumberError: -n or --number option must be specified for dataset download'
                 )
-                parser.print_help()
+                sys.exit(-1)
+
+        if args.migration:
+            try:
+                if args.copybook_directory is None:
+                    raise SystemError()
+            except SystemError:
+                Log().logger.critical(
+                    'CopybookDirectoryError: -C or --copybook-directory option must be specified for dataset migration'
+                )
+                sys.exit(-1)
+
+        # Analyze if the ip address respect valid format
+        if args.ip_address:
+            try:
+                status = Utils().analyze_ip_address(args.ip_address)
+                if status is False:
+                    raise SystemError()
+            except SystemError:
+                Log().logger.critical(
+                    'FormatError: Invalid -p, --ip-address option: Must respect either IPv4 or IPv6 standard format'
+                )
+                sys.exit(-1)
+
+        # Analyze if the number is above 0
+        if args.number:
+            try:
+                if args.number <= 0:
+                    raise SystemError()
+            except:
+                Log().logger.critical(
+                    'SignError: Invalid -n, --number option: Must be positive'
+                )
+                sys.exit(-1)
+
+        if args.listcat_result:
+            try:
+                listcat_path = os.path.expandvars(args.listcat_result)
+                if os.path.isdir(listcat_path):
+                    Log().logger.debug('Listcat directory specified.')
+                else:
+                    Log().logger.debug('Listcat file specified.')
+                    extension = listcat_path.rsplit('.', 1)[1]
+                    if extension != 'txt':
+                        raise TypeError()
+            except IndexError:
+                Log().logger.critical(
+                    'IndexError: Given Listcat file does not have a .txt extension: '
+                    + listcat_path)
+                sys.exit(-1)
+            except TypeError:
+                Log().logger.critical(
+                    'TypeError: Expected .txt extension, found ' + extension +
+                    ': ' + listcat_path)
                 sys.exit(-1)
 
         return args
-
-    def _evaluate_ip_address(self, ip_address):
-        """Checking the format of the ip address used as a parameter.
-
-        This method is able to detect both IPv4 and IPv6 addresses. It is a really simple pattern analysis.
-
-        Args:
-            ip_address: A string, the ip address used as as a parameter.
-
-        Returns:
-            A boolean, if the ip address used as input is a fully qualified ip address or not.
-        """
-        is_valid_ip = False
-
-        # IPv4 pattern detection
-        if ip_address.count('.') == 3:
-            fields = ip_address.split('.')
-            is_IPv4 = False
-            for field in fields:
-                if str(int(field)) == field and 0 <= int(field) <= 255:
-                    is_IPv4 = True
-                else:
-                    is_IPv4 = False
-                    break
-            is_valid_ip = is_IPv4
-        # IPv6 pattern detection
-        if ip_address.count(':') == 7:
-            fields = ip_address.split(':')
-            is_IPv6 = False
-            for field in fields:
-                if len(field) > 4:
-                    is_IPv6 = False
-                    break
-                if int(field, 16) >= 0 and field[0] != '-':
-                    is_IPv6 = True
-                else:
-                    is_IPv6 = False
-                    break
-            is_valid_ip = is_IPv6
-
-        return is_valid_ip
 
     def run(self):
         """Perform to execute jobs of OFTools DSMigin.
@@ -329,15 +297,15 @@ class Main(object):
         Returns:
             An integer, the general return code of the program.
         """
-        rc = 0
+        # For testing purposes. allow to remove logs when executing coverage
+        # logging.disable(logging.CRITICAL)
+        Log().open_stream()
+
         # Parse command-line options
         args = self._parse_arg()
 
-        # Handle version option
-        if args.version is True:
-            version = 'oftools-dsmigin ' + __version__
-            print(version)
-            return rc
+        # Set log level
+        Log().set_level(args.log_level)
 
         # Initialize execution context
         Context().set_input_csv(args.input_csv)
@@ -348,14 +316,11 @@ class Main(object):
         Context().set_listcat_result(args.listcat_result)
         Context().set_tag(args.tag)
         Context().set_today_date()
-        Context().set_work_directory(args.work_directory)
+        Context().set_working_directory(args.working_directory)
         Context().set_dataset_directory()
         Context().set_conversion_directory()
         Context().set_copybook_directory(args.copybook_directory)
         Context().set_log_directory()
-
-        # Set log level
-        Log().set_level(args.log)
 
         # Create jobs
         job = None
@@ -380,4 +345,4 @@ class Main(object):
         for job in jobs:
             job.run()
 
-        return rc
+        return 0

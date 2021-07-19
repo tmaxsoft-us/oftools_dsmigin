@@ -13,10 +13,12 @@ Typical usage example:
 # Generic/Built-in modules
 import datetime
 import os
+import sys
 
 # Third-party modules
 
 # Owned modules
+from .Log import Log
 
 
 class SingletonMeta(type):
@@ -48,7 +50,7 @@ class Context(object, metaclass=SingletonMeta):
         _dataset_directory: A string, located under the working directory, this directory contains all downloaded datasets.
         _log_directory: A string, located under the working directory, this directory contains the logs of each execution of 
             oftools_dsmigin.
-        _work_directory: A string, working directory for the program execution.
+        _working_directory: A string, working directory for the program execution.
 
     Methods:
         __init__(): Initializes all attributes of the context.
@@ -71,7 +73,10 @@ class Context(object, metaclass=SingletonMeta):
         self._copybook_directory = ''
         self._dataset_directory = ''
         self._log_directory = ''
-        self._work_directory = ''
+        self._working_directory = ''
+
+        # Other
+        self._init_pwd = os.getcwd()
 
     @property
     def input_csv(self):
@@ -221,7 +226,7 @@ class Context(object, metaclass=SingletonMeta):
         Create the directory if it does not already exists.
         """
         try:
-            self._conversion_directory = self._work_directory + '/conversion'
+            self._conversion_directory = self._working_directory + '/conversion'
             if not os.path.exists(self._conversion_directory):
                 os.mkdirs(self._conversion_directory)
         except:
@@ -257,7 +262,7 @@ class Context(object, metaclass=SingletonMeta):
         Create the directory if it does not already exists.
         """
         try:
-            self._dataset_directory = self._work_directory + '/datasets'
+            self._dataset_directory = self._working_directory + '/datasets'
             if not os.path.exists(self._dataset_directory):
                 os.mkdirs(self._dataset_directory)
         except:
@@ -276,31 +281,38 @@ class Context(object, metaclass=SingletonMeta):
         Create the directory if it does not already exists.
         """
         try:
-            self._log_directory = self._work_directory + '/logs'
+            self._log_directory = self._working_directory + '/logs'
             if not os.path.exists(self._log_directory):
                 os.mkdirs(self._log_directory)
         except:
             print('Logs directory creation failed. Permission denied.')
 
     @property
-    def work_directory(self):
-        """Getter method for the attribute _work_directory.
+    def working_directory(self):
+        """Getter method for the attribute _working_directory.
         """
-        return self._work_directory
+        return self._working_directory
 
-    @work_directory.setter
-    def work_directory(self, work_directory):
-        """Setter method for the attribute _work_directory.
+    @working_directory.setter
+    def working_directory(self, working_directory):
+        """Setter method for the attribute _working_directory.
 
         Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already.
         """
-        if work_directory is not None and not work_directory.startswith('/'):
-            self._work_directory = os.getcwd() + '/' + work_directory
-        else:
-            self._work_directory = work_directory
+        working_directory = os.path.expandvars(working_directory)
 
-        try:
-            if not os.path.exists(self._work_directory):
-                os.mkdirs(self._work_directory)
-        except:
-            print('Working directory creation failed. Permission denied.')
+        if os.path.isdir(working_directory) and os.access(
+                        working_directory, os.W_OK):
+            # Save work directory to Context
+            self._working_directory = os.path.abspath(working_directory)
+            os.chdir(working_directory)
+        else:
+            Log().logger.critical(
+                'PermissionError: Permission denied: No write access on working directory: '
+                + working_directory)
+            sys.exit(-1)
+
+    def clear_all(self):
+        """Clears context completely at the end of the program execution.
+        """
+        os.chdir(self._init_pwd)
