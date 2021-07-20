@@ -14,6 +14,7 @@ import traceback
 # Owned modules
 from . import __version__
 from .Context import Context
+from .CSV import CSV
 from .JobFactory import JobFactory
 from .Log import Log
 from .Utils import Utils
@@ -53,7 +54,7 @@ class Main(object):
             '-c',
             '--csv',
             action='store',  # optional because default action is 'store'
-            dest='input_csv',
+            dest='csv',
             help=
             'name of the CSV file, contains the datasets and their parameters',
             metavar='FILENAME',
@@ -61,7 +62,7 @@ class Main(object):
             type=str)
 
         required.add_argument('-w',
-                              '--work-directory',
+                              '--working-directory',
                               action='store',
                               dest='working_directory',
                               help='path of the work directory',
@@ -70,7 +71,7 @@ class Main(object):
                               type=str)
 
         # Optional arguments
-        #TODO MAke it possible to specify a list of directories, separated with a ':'
+        #TODO Make it possible to specify a list of directories, separated with a ':'
         optional.add_argument('-C',
                               '--copybook-directory',
                               action='store',
@@ -84,7 +85,7 @@ class Main(object):
                               '--download',
                               action='store_true',
                               dest='download',
-                              help='trigger FTP to start dataset download',
+                              help='trigger dataset download. Mainframe connection through FTP required',
                               required=False)
 
         optional.add_argument(
@@ -104,7 +105,7 @@ class Main(object):
             '-l',
             '--listcat',
             action='store',
-            dest='listcat_result',
+            dest='listcat',
             help=
             'name of the listcat result file/directory, required if the CSV file contains VSAM dataset info',
             metavar='FILENAME/DIRECTORY',
@@ -126,7 +127,7 @@ class Main(object):
 
         # It is not possible to handle datasets download at once, there is a certain timeout using FTP to download from the mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little.
         optional.add_argument('-n',
-                              '--number',
+                              '--number-datasets',
                               action='store',
                               dest='number_datasets',
                               help='set the number of datasets to be handled',
@@ -158,7 +159,7 @@ class Main(object):
                               '--update',
                               action='store_true',
                               dest='update',
-                              help='trigger CSV file update',
+                              help='trigger CSV file update. Mainframe connection through FTP required',
                               required=False)
 
         optional.add_argument('-h',
@@ -193,7 +194,7 @@ class Main(object):
 
         # Analyze CSV file, making sure a file with .csv extension is specified
         try:
-            csv_path = os.path.expandvars(args.input_csv)
+            csv_path = os.path.expandvars(args.csv_file)
             extension = csv_path.rsplit('.', 1)[1]
             if extension != 'csv':
                 raise TypeError()
@@ -291,6 +292,48 @@ class Main(object):
 
         return args
 
+    def _create_jobs(self, args):
+        """Creates job depending on the input parameters.
+
+        Args:
+            args:
+
+        Returns:
+            A list of Job objects.
+
+        Raises:
+            #TODO Complete docstrings, maybe change the behavior to print traceback only with DEBUG as log level
+        """
+        jobs = []
+        job_factory = JobFactory()
+
+        try:
+            if args.update:
+                Context().ip_address = args.ip_address
+                job = job_factory.create('update')
+                jobs.append(job)
+            if args.listcat != None:
+                Context().listcat_result = args.listcat
+                job = job_factory.create('listcat')
+                jobs.append(job)
+            if args.download:
+                Context().ip_address = args.ip_address
+                Context().number_datasets = args.number_datasets
+                job = job_factory.create('download')
+                jobs.append(job)
+            if args.migration != None:
+                Context().migration_type = args.migration
+                Context().copybook_directory = args.copybook_directory
+                job = job_factory.create('migration')
+                jobs.append(job)
+        except:
+            traceback.print_exc()
+            Log().logger.error('Unexpected error detected during the job creation')
+            sys.exit(-1)
+        
+        return jobs
+
+
     def run(self):
         """Perform to execute jobs of OFTools DSMigin.
 
@@ -307,42 +350,30 @@ class Main(object):
         # Set log level
         Log().set_level(args.log_level)
 
-        # Initialize execution context
-        Context().set_input_csv(args.input_csv)
-        Context().set_migration_type(args.migration)
-        Context().set_encoding_code('US')
-        Context().set_number(args.number)
-        Context().set_ip_address(args.ip_address)
-        Context().set_listcat_result(args.listcat_result)
-        Context().set_tag(args.tag)
-        Context().set_today_date()
-        Context().set_working_directory(args.working_directory)
-        Context().set_dataset_directory()
-        Context().set_conversion_directory()
-        Context().set_copybook_directory(args.copybook_directory)
-        Context().set_log_directory()
+        # Initialize variables for program execution
+        Context().working_directory = args.working_directory
+        Context().tag = args.tag
+        Context().encoding_code = 'US'
+
+        # CSV file processing
+        csv_file = CSV(args.csv_file)
+        rc = csv_file.backup()
+        Context().records = csv_file.read()
 
         # Create jobs
-        job = None
-        jobs = []
-        job_factory = JobFactory()
-        try:
-            if args.update:
-                job = job_factory.create('update')
-            elif args.listcat_result != None:
-                job = job_factory.create('listcat')
-            elif args.download:
-                job = job_factory.create('download')
-            elif args.migration != None:
-                job = job_factory.create('migration')
-            jobs.append(job)
-        except:
-            traceback.print_exc()
-            print('Unexpected error detected during the job creation')
-            sys.exit(-1)
+        jobs = self._create_jobs(args)
 
         # Run jobs
         for job in jobs:
-            job.run()
+            rc = job.run()
+            if rc < 0:
+                Log().logger.error(
+                    'An error occurred. Aborting source file processing'
+                )
+                break
 
-        return 0
+        # Need to clear context completely and close log at the end of the execution
+        Context().clear_all()
+        Log().close_stream()
+
+        return rc
