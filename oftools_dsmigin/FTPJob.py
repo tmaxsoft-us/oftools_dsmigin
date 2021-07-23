@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This modules runs the Download Job.
+"""This modules runs the FTP Job.
 
     Typical usage example:
       job = DownloadJob()
@@ -20,8 +20,8 @@ from .Log import Log
 from .Utils import Utils
 
 
-class DownloadJob(Job):
-    """A class used to run the download job.
+class FTPJob(Job):
+    """A class used to run the FTP job.
 
         This class contains a run method that executes all the steps of the job.
 
@@ -78,7 +78,7 @@ class DownloadJob(Job):
             #TODO Create VSAM dataset to check if there is always the same number of dataset info
 
             Context().records[record_index].columns = record
-            self._csv.write()
+            self._storage_resource.write()
         else:
             Log().logger.info('[FTP] Dataset info retrieval failed')
 
@@ -239,7 +239,7 @@ class DownloadJob(Job):
             record[Col.FTPDURATION] = str(elapsed_time)
 
         Context().records[record_index].columns = record
-        self._csv.write()
+        self._storage_resource.write()
 
         return rc
 
@@ -255,7 +255,7 @@ class DownloadJob(Job):
         number_downloaded = 0
         os.chdir(Context().dataset_directory)
 
-        for i in range(len(self._csv.records)):
+        for i in range(len(Context().records)):
             rc = self._get_dataset_info(i)
             if rc != 0:
                 continue
@@ -282,8 +282,8 @@ class DownloadJob(Job):
                             Log().logger.info(
                                 '[FTP] Limit of dataset download reached')
                             break
-                    else: 
+                    else:
                         Log().logger.info('[FTP] Current download count: ' +
-                                              str(number_downloaded))
+                                          str(number_downloaded))
 
         return rc
