@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 """This module retrieves the parameters entered by the user and launches the corresponding job.
 
-Typical usage example:
-
-  job_factory = JobFactory()
-  job_factory.create('update')
+    Typical usage example:
+      job_factory = JobFactory()
+      job_factory.create('update')
 """
 
 # Generic/Built-in modules
@@ -13,36 +12,41 @@ Typical usage example:
 # Third-party modules
 
 # Owned modules
-from .DownloadJob import DownloadJob
+from .FTPJob import FTPJob
 from .ListcatJob import ListcatJob
 from .MigrationJob import MigrationJob
-from .UpdateJob import UpdateJob
 
 
 class JobFactory(object):
-    """Class following the Factory pattern to execute different jobs depending on the user input.
+    """A class used to create all the jobs required with the given input parameters. 
+    
+        This class is the core of the Factory design pattern.
 
-    Methods:
-        create(input): Create the job according to the input parameter.
-    """
+        Attributes:
+            _storage_resource: A storage resource object, the object where the program read and write the data.   It could be a CSV file or a database table.
 
-    def create(self, input):
-        """Create the job according to the input parameter.
+        Methods:
+            __init__(storage_resource): Initializes the class with the _storage_resource attribute.
+            create(input): Creates the job according to the input parameter."""
 
-        Args:
-            input: Input parameter to launch the appropriate Job.
+    def __init__(self, storage_resource):
+        """Initializes the class with the _storage_resource attribute.
+            """
+        self._storage_resource = storage_resource
 
-        Returns:
-            A Job object, the appropriate job.
-        """
-        if input == 'update':
-            return UpdateJob()
-        elif input == 'listcat':
-            return ListcatJob()
-        elif input == 'download':
-            return DownloadJob()
-        elif input == 'migration':
-            return MigrationJob()
+    def create(self, job_name):
+        """Creates the job according to the input parameter.
 
-        assert True == 'undefined Job found'
-        return None
+            Args:
+                job_name: A string, the name of the job.
+
+            Returns:
+                A Job object, the appropriate one depending on the input."""
+        if job_name == 'ftp':
+            return FTPJob(self._storage_resource)
+        elif job_name == 'listcat':
+            return ListcatJob(self._storage_resource)
+        elif job_name == 'migration':
+            return MigrationJob(self._storage_resource)
+        else:
+            return None
