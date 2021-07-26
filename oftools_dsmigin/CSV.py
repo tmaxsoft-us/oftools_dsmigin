@@ -2,17 +2,16 @@
 # -*- coding: utf-8 -*-
 """This modules runs all functions related to the CSV file.
 
-Typical usage example:
-    csv_file = CSV()
-    csv_file.read()
-    csv_file.write(records)
-    csv_file.backup()
+    Typical usage example:
+      csv = CSV(csv_path)
+      csv.backup()
+      csv.read()
+      csv.write()
 """
 
 # Generic/Built-in modules
 import csv
 import os
-import shutil
 import sys
 
 # Third-party modules
@@ -47,86 +46,98 @@ class CSV(object):
     def __init__(self, csv_path):
         """Initializes all attributes.
             """
-        self._column_names = []
-        for column in Col:
-            self._column_names.append(column.name)
+        self._headers = [column.name for column in Col]
 
-        self._data = Utils().read_file(csv_path)
-        self._file_path = os.path.abspath(csv_path)
+        self._file_path = os.path.expandvars(csv_path)
+        self._file_path = os.path.abspath(self._file_path)
         self._file_name = self._file_path.rsplit('/', 1)[1]
         self._root_file_name = self._file_name.split('.')[0]
+
+        self._data = None
 
         self._backup()
         self._read()
 
-    def _check_column_headers(self, headers):
-        """Compare column headers in the CSV file to model in the program.
+    def _backup(self):
+        """Creates a backup of the CSV file.
 
-            First, this method checks if the number of columns match, and then the name of the column headers. If that is not the case, it sends an error message and shows the program definition (columns model) to the user.
+            Pattern for backup file naming: name_tag_timestamp_bckp.csv. This method make sure that the backup folder already exist before creating the first backup. It then copy the CSV file file to the target directory. Save the backup file in a dedicated directory under the working directory.
+            # Naming convention for the backup files
+
+            Returns:
+                An integer, the return code of the method."""
+        backup_file_name = self._root_file_name + '_' + Context(
+        ).tag + '_' + Context().timestamp + '.csv'
+        backup_file_path = Context().csv_backup_directory + backup_file_name
+        
+        rc = Utils().copy_file(self._file_path, backup_file_path)
+
+        return rc
+
+    def _check_headers(self, headers):
+        """Compares column headers in the CSV file to model in the program.
+
+            First, this method checks if the number of columns match, and then if the column headers match as well. If that is not the case, it sends an error message and shows the program definition (column headers model) to the user.
 
             Args:
                 headers: A list, headers of the columns extracted from the file.
 
             Returns:
                 An integer, the return code of the method."""
-        rc = 0
-        # If the number of columns in the CSV file does match the number of elements in _column_names
-        if len(headers) == len(self._column_names):
-            # The name of each column of the file has to match the name in the list _column_names
+        if len(headers) == 1:
+            Log().logger.debug('[CSV] List of dataset names only')
+            rc = 1
+        elif len(headers) < len(self._headers):
+            Log().logger.error('[CSV] Missing headers')
+            rc = -1
+        elif len(headers) == len(self._headers): 
             for i in range(len(headers)):
-                if headers[i].strip() != self._column_names[i]:
+                if headers[i].strip() != self._headers[i]:
+                    Log().logger.error('[CSV] Typographical error on the header: ' + headers[i].strip())
                     rc = -1
                     break
+            Log().logger.debug('[CSV] Headers correctly specified')
+            rc = 0
         else:
+            Log().logger.error('[CSV] Too many headers specified')
             rc = -1
 
-        if rc != 0:
+        if rc < 0:
             Log().logger.error(
-                '[CSV] Column names are not matching with the program definition'
+                '[CSV] Headers are not matching with the program definition'
             )
-            Log().logger.error('Input file:')
+            Log().logger.error('[CSV] Input file:')
             Log().logger.error(headers)
-            Log().logger.error('Program definition:')
-            Log().logger.error(self._column_names)
+            Log().logger.error('[CSV] Program definition:')
+            Log().logger.error(self._headers)
             sys.exit(-1)
 
         return rc
 
     def _read(self):
-        """Read the content of the CSV file an store the result in a list.
+        """Reads the content of the CSV file an store the data in a list.
 
             First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list records. 
 
             Returns:
                 A 2D-list, the datasets data extracted from the CSV file."""
-        rc = 0
+        self._data = Utils().read_file(self._file_path)
 
-        for i in range(len(self._data)):
-            if i == 0 and self._data[i][0].strip() == Col.DSN.name:
-                Log().logger.debug('[CSV] List of dataset names only')
-                continue
-            # Checking headers of the CSV file
-            if i == 0 and self._data[i][0].strip() == Col.DSN.name and len(
-                    self._data[i]) > 1:
-                Log().logger.debug(
-                    '[CSV] Fully qualified CSV file. Checking headers')
-                self._check_column_headers(self._data[0])
-                continue
-
-            # This is not the header of the file, saving the data
-            record = DatasetRecord()
-            record.columns = self._data[i]
-            Context().records.append(record)
-            # Check that DSN is not missing
-            if record.columns[Col.DSN.value] in ('', ' ', None):
-                print('Missing dataset name (DSN) on the line ' + i)
+        if self._data != None:
+            for i in range(len(self._data)):
+                if i == 0:
+                    rc = self._check_headers(self._data[i])
+                else:
+                    record = DatasetRecord()
+                    record.columns = self._data[i]
+                    Context().records.append(record)
 
         return rc
 
     def write(self):
         """Write the changes on the dataset records to the CSV file.
 
-            It just open the CSV file, write the first row with the headers and then write the data from the list records.
+            Opens the CSV file, writes the headers in the first row and then writes the data from the records.
 
             Args:
                 records: A 2D-list, dataset data after all the changes applied in the program execution.
@@ -135,43 +146,18 @@ class CSV(object):
                 An integer, the return code of the method."""
         rc = 0
 
-        with open(self._file_path, 'w') as csvfile:
-            csv_data = csv.writer(csvfile, delimiter=',')
+        with open(self._file_path, 'w') as fd:
+            csv_data = csv.writer(fd, delimiter=',')
             # Writing column headers to CSV file
-            csv_data.writerow(self._column_names)
+            rc = csv_data.writerow(self._headers)
+            Log().logger.debug('[CSV] Return code of the call to the write method for the headers:' + rc)
 
-            # Writing data from records to CSV file
-            #TODO Find a way (maybe) to write only the changes, and not all the rows every single time
+            # Writing records to CSV file
+            #! Every execution the file needs to be written entirely
             for record in Context().records:
                 csv_data.writerow(record)
-
-        return rc
-
-    def _backup(self):
-        """Create a backup of the CSV file in a dedicated directory under the work directory.
-
-            Pattern for backup file naming: name_tag_timestamp_bckp.csv. This method make sure that the backup folder already exist before creating the first backup. It then copy the CSV file file to the target directory.
-
-            Returns:
-                An integer, the return code of the method."""
-        rc = 0
-        # Naming convention for the backup files
-        backup_directory = Context().working_directory + '/csv_backups'
-        backup_file_name = self._root_file_name + '_' + Context(
-        ).tag + '_' + Context().timestamp + '_bckp.csv'
-
-        try:
-            # Create the backup directory if it does not exist already
-            if not os.path.exists(backup_directory):
-                os.mkdirs(backup_directory)
-        except:
-            print('CSV backup directory creation failed. Permission denied.')
-
-        backup_file_path = backup_directory + backup_file_name
-        try:
-            # Copy the CSV file to a backup file
-            shutil.copy(self._file_path, backup_file_path)
-        except:
-            print('CSV backup file creation failed. Permission denied.')
+                Log().logger.debug('[CSV] Return code of the call to the write method for the data:' + rc)
+            #TODO Need a performance test
+            # rc = csv_data.writerows(Context().records)    
 
         return rc
