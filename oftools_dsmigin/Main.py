@@ -305,14 +305,18 @@ class Main(object):
                 Context.ftp_type = args.ftp
                 Context().ip_address = args.ip_address
                 Context().number_datasets = args.number
+                Context().set_dataset_directory()
                 job = job_factory.create('ftp')
                 jobs.append(job)
             if args.listcat != None:
-                Context().listcat_result = args.listcat
+                Context().listcat_file_path = args.listcat
+                Context().set_listcat_directory()
                 job = job_factory.create('listcat')
                 jobs.append(job)
             if args.migration != None:
+                Context().encoding_code = 'US'
                 Context().migration_type = args.migration
+                Context().set_conversion_directory()
                 Context().copybook_directory = args.copybook_directory
                 job = job_factory.create('migration')
                 jobs.append(job)
@@ -336,19 +340,19 @@ class Main(object):
         # Parse command-line options
         args = self._parse_arg()
 
-        # Set log level
-        Log().set_level(args.log_level)
-
         # Initialize variables for program execution
         Context().working_directory = args.working_directory
         Context().tag = args.tag
-        Context().encoding_code = 'US'
-        statistics = Statistics()
 
-        # Initializes Log file
-        Log().open_file(
-            os.path.join(Context().log_directory,
-                         'oftools_dsmigin_' + Context().timestamp + '.log'))
+        # Set log level and initialize log file
+        log_file_name = 'oftools_dsmigin_' + Context().tag + '_' + Context(
+        ).timestamp + '.log'
+        log_file_path = os.path.join(Context().log_directory, log_file_name)
+
+        Log().set_level(args.log_level)
+        Log().open_file(log_file_path)
+
+        statistics = Statistics()
 
         # CSV file processing
         csv = CSV(args.csv)

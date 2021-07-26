@@ -2,24 +2,26 @@
 # -*- coding: utf-8 -*-
 """Set of functions useful in any module.
 
-This module gathers a set of functions that are useful in many other modules. When a 
-function is widely used in different modules, a general version of it is created and 
-can be found here.
+    This module gathers a set of functions that are useful in many other modules. When a 
+    function is widely used in different modules, a general version of it is created and 
+    can be found here.
 
-  Typical usage example:
-
-  shell_result = Utils().execute_shell_command(shell_command)
-  ftp_result = Utils().execute_ftp_command(ftp_command)
-"""
+    Typical usage example:
+      shell_result = Utils().execute_shell_command(shell_command)
+      ftp_result = Utils().execute_ftp_command(ftp_command)"""
 
 # Generic/Built-in modules
+import csv
+import os
+import shutil
 import subprocess
-from shutil import which
+import sys
 
 # Third-party modules
 
 # Owned modules
 from .Context import Context
+from .Log import Log
 
 
 class SingletonMeta(type):
@@ -35,27 +37,25 @@ class SingletonMeta(type):
 class Utils(object, metaclass=SingletonMeta):
     """A class used to run several useful functions.
 
-    Attributes:
-        _ip_address: A string, the ip address of the mainframe to connect to for the FTP execution.
+        Attributes:
+            _ip_address: A string, the ip address of the mainframe to connect to for the FTP execution.
 
-    Methods:
-        analyze_ip_address(ip_address): Checking the format of the ip address used as a parameter.
-        check_command(shell_command): Check if the command exist in the environment using which.
-        execute_shell_command(shell_command): Separate method to execute shell command.
-        execute_ftp_command(ftp_command): Separate method to execute FTP command.
-    """
+        Methods:
+            analyze_ip_address(ip_address): Checking the format of the ip address used as a parameter.
+            check_command(shell_command): Check if the command exist in the environment using which.
+            execute_shell_command(shell_command): Separate method to execute shell command.
+            execute_ftp_command(ftp_command): Separate method to execute FTP command."""
 
     def analyze_ip_address(self, ip_address):
         """Checking the format of the ip address used as a parameter.
 
-        This method is able to detect both IPv4 and IPv6 addresses. It is a really simple pattern analysis.
+            This method is able to detect both IPv4 and IPv6 addresses. It is a really simple pattern analysis.
 
-        Args:
-            ip_address: A string, the ip address used as as a parameter.
+            Args:
+                ip_address: A string, the ip address used as as a parameter.
 
-        Returns:
-            A boolean, if the ip address used as input is a fully qualified ip address or not.
-        """
+            Returns:
+                A boolean, if the ip address used as input is a fully qualified ip address or not."""
         is_valid_ip = False
 
         # IPv4 pattern detection
@@ -89,73 +89,166 @@ class Utils(object, metaclass=SingletonMeta):
     def check_command(self, shell_command):
         """Check if the command exist in the environment using which.
 
-        Returns:
-            A boolean, True if the command does not exist and False if the command exist.
-        """
-        if which(shell_command) is None:
+            Returns:
+                A boolean, True if the command does not exist and False if the command exist."""
+        if shutil.which(shell_command) is None:
             return True
         else:
             return False
 
+    def create_directory(self, directory_path):
+        """Creates the given directory if it does not already exists.
+            """
+        try:
+            if not os.path.exists(directory_path):
+                os.mkdir(directory_path)
+            rc = 0
+        except PermissionError:
+            Log().logger.error(
+                'PermissionError: Permission denied: Directory creation failed: '
+                + directory_path)
+            rc = -1
+        
+        return rc
+    
+    def copy_file(self, file_path_src, file_path_dst):
+        """Copy a source file to its given destination.
+            """
+        try:
+            shutil.copy(file_path_src, file_path_dst)
+            #TODO Test copy to a folder that does not exist
+            rc = 0
+        except shutil.SameFileError as e:
+            Log().logger.error('Failed to copy: %s' % e)
+            rc = -1
+        except OSError as e:
+            Log().logger.error('Failed to copy: %s' % e)
+            rc = -1
+
+        return rc
+
     def execute_shell_command(self, shell_command):
         """Separate method to execute shell command.
-        
-        This method is dedicated to execute a shell command and it handles exception in case of failure.
+            
+            This method is dedicated to execute a shell command and it handles exceptions in case of 
+            failure.
 
-        Args:
-            shell_command: the actual shell command that needs to be executed.
+            Args:
+                shell_command: A string, the actual shell command that needs to be executed.
 
-        Returns:
-            A Popen object, which contains the return code and the result of the shell command.
-        """
-        if self.check_command(shell_command.split()[0]):
+            Returns:
+                A tuple, which is the stdout, stderr, and return code of the shell command.
+
+            Raises:
+                UnicodeDecodeError: An error occurred if decoding the shell command result failed 
+                    with utf-8. Use latin-1 instead."""
+        #TODO Define default values for stdout, stderr, return_code
+        root_command = shell_command.split()[0]
+        command_exist = self.check_command(root_command)
+
+        if command_exist:
             try:
-                proc = subprocess.Popen(shell_command,
-                                        shell=True,
-                                        stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE)
-                proc.communicate()[0]
-
-                shell_result = proc.stdout.decode('utf_8')
-                if ('failed' in shell_result) or (
-                        'command not found' in shell_result) or (
-                            shell_result == ''):
-                    proc = None
+                proc = subprocess.run(shell_command,
+                                      shell=True,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+                stdout = proc.stdout.decode('utf_8')
+                stderr = proc.stderr.decode('utf_8')
+                return_code = proc.returncode
+            except UnicodeDecodeError:
+                stdout = proc.stdout.decode('latin_1')
+                stderr = proc.stderr.decode('latin_1')
+                return_code = proc.returncode
             except:
-                proc = None
+                stdout = None
+                stderr = None
+                return_code = -1
+            finally:
+                return stdout, stderr, return_code
         else:
-            proc = None
-
-        return proc
+            Log().logger.error('Command does not exist:' + root_command)
 
     def execute_ftp_command(self, ftp_command):
         """Separate method to execute FTP command.
 
-        This method is dedicated to execute a ftp command and it handles exception in case of failure. The credentials to open the FTP session are provided through the file .netrc in the home directory. This configuration file needs to be created before the first execution of the tool.
-        """
+            This method is dedicated to execute a ftp command and it handles exception in case of failure. The credentials to open the FTP session are provided through the file .netrc in the home directory. This configuration file needs to be created before the first execution of the tool."""
         # ! We might need to use sftp (FTP over SSH) with more security
         # ! By default, connection refused on port 22. After modification of
         # ! the PROFILE to add TCP connection on port 22, still not working
+        connect_command = 'ftp << EOF\nftp ' + Context().ip_address + '\n'
+        shell_command = connect_command + ftp_command
 
-        connection_command = 'lftp << EOF\nlftp ' + Context().ip_address + '\n'
-        shell_command = connection_command + ftp_command
+        return self.execute_shell_command(shell_command)
 
-        if self.check_command(shell_command.split()[0]):
-            try:
-                proc = subprocess.Popen(shell_command,
-                                        shell=True,
-                                        stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE)
-                proc.communicate()[0]
+    def read_file(self, file_path):
+        """Open and read the input file.
 
-                shell_result = proc.stdout.decode('utf_8')
-                if ('failed' in shell_result) or (
-                        'command not found' in shell_result) or (
-                            shell_result == ''):
-                    proc = None
-            except:
-                proc = None
+            Supports following extensions:
+                - configuration: conf, cfg, prof
+                - text: log, tip, txt
+
+            Args:
+                path_to_file: A string, absolute path to the file.
+
+            Returns: 
+                A parsed file, the type depends on the extension of the processed file.
+
+            Raises:
+                FileNotFoundError: An error occurs if the file does not exist or is not found.
+                IsADirectoryError: An error occurs if a directory is specified instead of a file.
+                PermissionError: An error occurs if the user running the program does not have the required 
+                    permissions to access the input file.
+                SystemExit: An error occurs of the file is empty.
+                TypeError: An error occurs if the file extension is not supported.
+
+                MissingSectionHeaderError: An error occurs if the config file specified does not contain 
+                    any section.
+                DuplicateSectionError: An error occurs if there are two sections with the same name in the 
+                    config file specified.
+                DuplicateOptionError: An error occurs if there is a duplicate option in one of the sections 
+                    of the config file specified."""
+        try:
+            file_path = os.path.expandvars(file_path)
+            # Check on file size
+            if os.stat(file_path).st_size <= 0:
+                raise SystemError()
+
+            if os.path.isfile(file_path):
+                with open(file_path, mode='r') as fd:
+                    extension = file_path.rsplit('.', 1)[1]
+                    
+                    if extension is 'csv':
+                        file = csv.reader(fd, delimiter=',')
+                    else:
+                        raise TypeError()
+                        
+            elif os.path.isdir(file_path):
+                raise IsADirectoryError()
+            else:
+                raise FileNotFoundError()
+
+        except FileNotFoundError:
+            Log().logger.critical(
+                'FileNotFoundError: No such file or directory: ' + file_path)
+            sys.exit(-1)
+        except IsADirectoryError:
+            Log().logger.critical('IsADirectoryError: Is a directory: ' +
+                                  file_path)
+            sys.exit(-1)
+        except IndexError:
+            Log().logger.critical('IndexError: Given file does not have an extension: ' +
+                                  file_path)
+            sys.exit(-1)
+        except PermissionError:
+            Log().logger.critical('PermissionError: Permission denied: ' +
+                                  file_path)
+            sys.exit(-1)
+        except SystemError:
+            Log().logger.critical('EmptyError: File empty: ' + file_path)
+            sys.exit(-1)
+        except TypeError:
+            Log().logger.critical('TypeError: Unsupported file extension: ' +
+                                  file_path)
+            sys.exit(-1)
         else:
-            proc = None
-
-        return proc
+            return file
