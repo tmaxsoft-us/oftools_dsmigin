@@ -13,10 +13,8 @@ Typical usage example:
 # Third-party modules
 
 # Owned modules
-from .CSV import CSV
 from .Job import Job
 from .Listcat import Listcat
-from .Statistics import Statistics
 
 
 class ListcatJob(Job):
@@ -38,17 +36,10 @@ class ListcatJob(Job):
             An integer, the return code of the job. 
         """
         rc = 0
-        records = []
-
-        csv_file = CSV()
-        rc = csv_file.backup()
-        records = csv_file.read()
-
         listcat = Listcat()
-        records = listcat.run(records)
 
-        rc = csv_file.write(records)
-        statistics = Statistics()
-        rc = statistics.run(records)
+        listcat.analyze()
+        listcat.update_dataset_records()
+        self._storage_resource.write()
 
         return rc

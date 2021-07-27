@@ -261,27 +261,27 @@ class Main(object):
         # Analyze if listcat has been properly specified
         #! No extension for listcat file, just must be a file and not a directory
         #NO EXTENSION
-        if args.listcat:
-            try:
-                listcat_path = os.path.expandvars(args.listcat)
-                if os.path.isdir(listcat_path):
-                    Log().logger.debug('Listcat directory specified.')
-                    #TODO Analyze extension of all listcat files
-                else:
-                    Log().logger.debug('Listcat file specified.')
-                    extension = listcat_path.rsplit('.', 1)[1]
-                    if extension != 'txt':
-                        raise TypeError()
-            except IndexError:
-                Log().logger.critical(
-                    'IndexError: Given Listcat file does not have a .txt extension: '
-                    + listcat_path)
-                sys.exit(-1)
-            except TypeError:
-                Log().logger.critical(
-                    'TypeError: Expected .txt extension, found ' + extension +
-                    ': ' + listcat_path)
-                sys.exit(-1)
+        # if args.listcat:
+        #     try:
+        #         listcat_path = os.path.expandvars(args.listcat)
+        #         if os.path.isdir(listcat_path):
+        #             Log().logger.debug('Listcat directory specified.')
+        #             #TODO Analyze extension of all listcat files
+        #         else:
+        #             Log().logger.debug('Listcat file specified.')
+        #             extension = listcat_path.rsplit('.', 1)[1]
+        #             if extension != 'txt':
+        #                 raise TypeError()
+        #     except IndexError:
+        #         Log().logger.critical(
+        #             'IndexError: Given Listcat file does not have a .txt extension: '
+        #             + listcat_path)
+        #         sys.exit(-1)
+        #     except TypeError:
+        #         Log().logger.critical(
+        #             'TypeError: Expected .txt extension, found ' + extension +
+        #             ': ' + listcat_path)
+        #         sys.exit(-1)
 
         return args
 
