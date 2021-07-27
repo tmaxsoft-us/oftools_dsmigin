@@ -13,10 +13,10 @@ import time
 # Third-party modules
 
 # Owned modules
-from .MigrationEnum import Col
 from .Context import Context
 from .Job import Job
 from .Log import Log
+from .MigrationEnum import Col
 from .Utils import Utils
 
 
@@ -63,6 +63,8 @@ class FTPJob(Job):
             Returns:
                 A 2D-list, the dataset data after update with mainframe information."""
         record = Context().records[record_index].columns
+        Log().logger.debug('[ftp] Retrieving dataset info: ' +
+                           record[Col.DSN.value])
         ftp_command = 'ls ' + record[Col.DSN.value] + '\nquit\nEOF'
         stdout, _, rc = Utils().execute_ftp_command(ftp_command)
 
@@ -80,7 +82,8 @@ class FTPJob(Job):
             Context().records[record_index].columns = record
             self._storage_resource.write()
         else:
-            Log().logger.info('[FTP] Dataset info retrieval failed')
+            Log().logger.info('[ftp] Dataset info retrieval failed: ' +
+                              record[Col.DSN.value])
 
         return rc
 
@@ -100,7 +103,7 @@ class FTPJob(Job):
                 An integer, the return code of the method."""
         rc = 0
         unset_list = ('', ' ', None)
-        root_message = '[FTP] Skipping dataset: ' + record[
+        root_message = '[ftp] Skipping dataset: ' + record[
             Col.DSN.value] + '. Reason: '
 
         # Missing information for download execution
@@ -155,7 +158,7 @@ class FTPJob(Job):
         # Retry dataset download that was previously failed
         if record[Col.FTP.value] == 'FAILED':
             Log().logger.debug(
-                '[FTP] Last download failed. Going to try again.')
+                '[ftp] Last download failed. Going to try again.')
             rc = 2
 
         return rc
@@ -179,7 +182,7 @@ class FTPJob(Job):
     def _download_PS(self, dsn, rdwftp):
         """
             """
-        Log().logger.debug('[FTP] Downloading PS dataset: ' + dsn)
+        Log().logger.debug('[ftp] Downloading PS dataset: ' + dsn)
         ftp_command = rdwftp + '\nget ' + dsn + '\nquit\nEOF'
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
@@ -188,7 +191,7 @@ class FTPJob(Job):
     def _download_PO(self, dsn, rdwftp):
         """
             """
-        Log().logger.debug('[FTP] Downloading PO dataset: ' + dsn)
+        Log().logger.debug('[ftp] Downloading PO dataset: ' + dsn)
         # Creating the directory for the PO dataset
         if not os.path.exists(dsn):
             os.makedirs(dsn)
@@ -222,21 +225,26 @@ class FTPJob(Job):
             rc = self._download_PS(record[Col.DSN.value], rdwftp)
         elif record[Col.DSORG.value] == 'PO':
             rc = self._download_PO(record[Col.DSN.value], rdwftp)
+        else:
+            Log().logger.error('[ftp] Invalid DSORG "' +
+                               record[Col.DSORG.value] +
+                               '" for the given dataset: ' +
+                               record[Col.DSN.value])
+            Log().logger.info('[ftp] Supported DSORG: PO, and PS')
+            rc = -1
+            return rc
 
         elapsed_time = time.time() - start_time
+        record[Col.FTPDATE.value] = Context().timestamp
+        record[Col.FTPDURATION] = str(elapsed_time)
 
         # Processing the result of the download
-        record[Col.FTPDATE.value] = Context().timestamp
         if rc == 0:
-            Log().logger.info('[FTP] Dataset download success: ' +
-                              record[Col.DSN.value])
             record[Col.FTP.value] = 'SUCCESS'
-            record[Col.FTPDURATION] = str(elapsed_time)
         elif rc < 0:
-            Log().logger.info('[FTP] Dataset download failed: ' +
-                              record[Col.DSN.value])
             record[Col.FTP.value] = 'FAILED'
-            record[Col.FTPDURATION] = str(elapsed_time)
+        Log().logger.info('DOWNLOAD ' + record[Col.FTP.value] + ' (' +
+                          str(round(elapsed_time, 4)) + ' s)')
 
         Context().records[record_index].columns = record
         self._storage_resource.write()
@@ -250,12 +258,13 @@ class FTPJob(Job):
 
             Returns: 
                 An integer, the return code of the job."""
-        Log().logger.debug('[FTP] Starting Job')
+        Log().logger.debug('[ftp] Starting Job')
 
         number_downloaded = 0
         os.chdir(Context().dataset_directory)
 
         for i in range(len(Context().records)):
+
             rc = self._get_dataset_info(i)
             if rc != 0:
                 continue
@@ -273,17 +282,15 @@ class FTPJob(Job):
                 else:
                     number_downloaded += 1
 
-                    if Context().number_datasets != 0:
-                        if number_downloaded < Context().number_datasets:
-                            Log().logger.info('[FTP] Current download count: ' +
-                                              str(number_downloaded) + '/' +
-                                              str(Context().number_datasets))
-                        else:
-                            Log().logger.info(
-                                '[FTP] Limit of dataset download reached')
-                            break
-                    else:
-                        Log().logger.info('[FTP] Current download count: ' +
-                                          str(number_downloaded))
+                if Context().number_datasets != 0:
+                    Log().logger.info('[ftp] Current download count: ' +
+                                        str(number_downloaded) + '/' +
+                                        str(Context().number_datasets))
+                    if number_downloaded >= Context().number_datasets:
+                        Log().logger.info('[ftp] Limit of dataset download reached')
+                        break
+                else:
+                    Log().logger.info('[ftp] Current download count: ' +
+                                    str(number_downloaded))
 
         return rc

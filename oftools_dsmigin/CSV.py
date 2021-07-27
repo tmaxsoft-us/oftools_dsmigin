@@ -50,8 +50,9 @@ class CSV(object):
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
-        self._file_name = self._file_path.rsplit('/', 1)[1]
-        self._root_file_name = self._file_name.split('.')[0]
+        
+        file_name = self._file_path.rsplit('/', 1)[1]
+        self._root_file_name = file_name.split('.')[0]
 
         self._data = None
 
@@ -92,17 +93,20 @@ class CSV(object):
             rc = -1
         elif len(headers) == len(self._headers): 
             for i in range(len(headers)):
-                if headers[i].strip() != self._headers[i]:
-                    Log().logger.error('[CSV] Typographical error on the header: ' + headers[i].strip())
+                header = headers[i].strip()
+                if header == self._headers[i]:
+                    rc = 0
+                else:
+                    Log().logger.error('[CSV] Typographical error on the header: ' + header)
                     rc = -1
                     break
-            Log().logger.debug('[CSV] Headers correctly specified')
-            rc = 0
         else:
             Log().logger.error('[CSV] Too many headers specified')
             rc = -1
 
-        if rc < 0:
+        if rc == 0:
+            Log().logger.debug('[CSV] Headers correctly specified')
+        elif rc < 0:
             Log().logger.error(
                 '[CSV] Headers are not matching with the program definition'
             )
@@ -153,9 +157,8 @@ class CSV(object):
             Log().logger.debug('[CSV] Return code of the call to the write method for the headers:' + rc)
 
             # Writing records to CSV file
-            #! Every execution the file needs to be written entirely
             for record in Context().records:
-                csv_data.writerow(record)
+                rc = csv_data.writerow(record)
                 Log().logger.debug('[CSV] Return code of the call to the write method for the data:' + rc)
             #TODO Need a performance test
             # rc = csv_data.writerows(Context().records)    
