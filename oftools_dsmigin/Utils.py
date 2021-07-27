@@ -95,21 +95,6 @@ class Utils(object, metaclass=SingletonMeta):
             return True
         else:
             return False
-
-    def create_directory(self, directory_path):
-        """Creates the given directory if it does not already exists.
-            """
-        try:
-            if not os.path.exists(directory_path):
-                os.mkdir(directory_path)
-            rc = 0
-        except PermissionError:
-            Log().logger.error(
-                'PermissionError: Permission denied: Directory creation failed: '
-                + directory_path)
-            rc = -1
-        
-        return rc
     
     def copy_file(self, file_path_src, file_path_dst):
         """Copy a source file to its given destination.
@@ -125,6 +110,21 @@ class Utils(object, metaclass=SingletonMeta):
             Log().logger.error('Failed to copy: %s' % e)
             rc = -1
 
+        return rc
+
+    def create_directory(self, directory_path):
+        """Creates the given directory if it does not already exists.
+            """
+        try:
+            if not os.path.exists(directory_path):
+                os.mkdir(directory_path)
+            rc = 0
+        except PermissionError:
+            Log().logger.error(
+                'PermissionError: Permission denied: Directory creation failed: '
+                + directory_path)
+            rc = -1
+        
         return rc
 
     def execute_shell_command(self, shell_command):
@@ -179,6 +179,24 @@ class Utils(object, metaclass=SingletonMeta):
         shell_command = connect_command + ftp_command
 
         return self.execute_shell_command(shell_command)
+
+    def format_command(self, shell_command):
+        """Prevent bugs in dsmigin execution by escaping some special characters.
+
+            It currently supports escaping the following characters:
+                - $
+                - #
+
+            Args:
+                shell_command: A string, the input shell command that needs to be formatted.
+
+            Returns:
+                A string, the shell command correctly formatted ready for execution."""
+        shell_command = shell_command.replace('$', '\\$')
+        shell_command = shell_command.replace('#', '\\#')
+        Log().logger.info(shell_command)
+
+        return shell_command
 
     def read_file(self, file_path):
         """Open and read the input file.
