@@ -40,3 +40,4 @@ test:
 coverage:
 	coverage run --source=oftools_compile -m pytest --color=yes -v -s
 	coverage report
+	

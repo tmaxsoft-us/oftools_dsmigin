@@ -95,7 +95,7 @@ class Utils(object, metaclass=SingletonMeta):
             return True
         else:
             return False
-    
+
     def copy_file(self, file_path_src, file_path_dst):
         """Copy a source file to its given destination.
             """
@@ -124,7 +124,7 @@ class Utils(object, metaclass=SingletonMeta):
                 'PermissionError: Permission denied: Directory creation failed: '
                 + directory_path)
             rc = -1
-        
+
         return rc
 
     def execute_shell_command(self, shell_command):
@@ -234,12 +234,12 @@ class Utils(object, metaclass=SingletonMeta):
             if os.path.isfile(file_path):
                 with open(file_path, mode='r') as fd:
                     extension = file_path.rsplit('.', 1)[1]
-                    
+
                     if extension is 'csv':
                         file = csv.reader(fd, delimiter=',')
                     else:
                         raise TypeError()
-                        
+
             elif os.path.isdir(file_path):
                 raise IsADirectoryError()
             else:
@@ -254,8 +254,9 @@ class Utils(object, metaclass=SingletonMeta):
                                   file_path)
             sys.exit(-1)
         except IndexError:
-            Log().logger.critical('IndexError: Given file does not have an extension: ' +
-                                  file_path)
+            Log().logger.critical(
+                'IndexError: Given file does not have an extension: ' +
+                file_path)
             sys.exit(-1)
         except PermissionError:
             Log().logger.critical('PermissionError: Permission denied: ' +

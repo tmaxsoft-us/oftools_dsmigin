@@ -352,7 +352,7 @@ class Main(object):
         Log().set_level(args.log_level)
         Log().open_file(log_file_path)
 
-        statistics = Statistics()
+        # statistics = Statistics()
 
         # CSV file processing
         csv = CSV(args.csv)
@@ -368,10 +368,10 @@ class Main(object):
                     'An error occurred. Aborting program execution')
                 break
 
-        rc = statistics.run()
-        if rc < 0:
-            Log().logger.error(
-                'An error occurred. Aborting statistics processing')
+        # rc = statistics.run()
+        # if rc < 0:
+        #     Log().logger.error(
+        #         'An error occurred. Aborting statistics processing')
 
         # Need to clear context completely and close log at the end of the execution
         Context().clear_all()

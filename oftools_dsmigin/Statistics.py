@@ -175,7 +175,7 @@ class Statistics(object):
         print('Number of datasets\n==================\n')
         print('PO\t\tPS\t\tVSAM\t\t\t\tTotal')
 
-    def run(self, records):
+    def run(self):
         """Main run method for the statistics computation.
 
         Args:
@@ -185,7 +185,7 @@ class Statistics(object):
             An integer, the return code of the method.
         """
         rc = 0
-        self._records = records
+        self._records = Context().records
 
         rc = self._analyze()
         rc = self._statistics_to_file()
