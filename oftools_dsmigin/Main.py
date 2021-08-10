@@ -1,11 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Main module of OpenFrame Tools Dataset Migration.
     """
 
 # Generic/Built-in modules
 import argparse
-import os
 import sys
 import traceback
 # import logging
@@ -18,7 +17,7 @@ from .Context import Context
 from .CSV import CSV
 from .JobFactory import JobFactory
 from .Log import Log
-from .Statistics import Statistics
+# from .Statistics import Statistics
 from .Utils import Utils
 
 
@@ -31,19 +30,19 @@ class Main(object):
     Dataset Migration.
 
         Methods:
-            _parse_arg(): Parsing command-line options.
-            _create_jobs(args, csv): Creates job depending on the input parameters.
-            run(): Perform to execute jobs of OpenFrame Tools Dataset Migration."""
+            _parse_arg() -- Parsing command-line options.
+            _create_jobs(args, csv) -- Creates job depending on the input parameters.
+            run() -- Perform to execute jobs of OpenFrame Tools Dataset Migration."""
 
     def _parse_arg(self):
-        """Parsing command-line options.
+        """Parses command-line options.
 
             The program defines what arguments it requires, and argparse will figure out how to parse 
             those out of sys.argv. The argparse module also automatically generates help, usage 
             messages and issues errors when users give the program invalid arguments.
 
             Returns:
-                args, an ArgumentParser object."""
+                ArgumentParser object -- Program input arguments."""
         parser = argparse.ArgumentParser(
             add_help=False, description='OpenFrame Tools Dataset Migration')
 
@@ -61,7 +60,7 @@ class Main(object):
             dest='csv',
             help=
             'name of the CSV file, contains the datasets and their parameters',
-            metavar='FILENAME',
+            metavar='CSV',
             required=True,
             type=str)
 
@@ -69,60 +68,59 @@ class Main(object):
                               '--working-directory',
                               action='store',
                               dest='working_directory',
-                              help='path of the work directory',
+                              help='path to the working directory',
                               metavar='DIRECTORY',
                               required=True,
                               type=str)
 
         # Jobs arguments
         jobs.add_argument(
-            '-f',
-            '--ftp',
-            action='store',
-            choices=['U', 'D'],
-            dest='ftp',
-            help=
-            '''trigger FTP execution for CSV file update and dataset download. FTP server running on Mainframe required. Potential options:
-                'U' for CSV file update ONLY
-                'D' for CSV file update & dataset download''',
-            metavar='FLAG',
-            required=False,
-            type=str)
-
-        jobs.add_argument(
             '-l',
             '--listcat',
-            action='store',
+            action='store_true',
             dest='listcat',
             help=
-            'name of the listcat result file/directory, required if the CSV file contains VSAM dataset info',
-            metavar='FILENAME/DIRECTORY',
-            required=False,
-            type=str)
+            'flag to trigger listcat execution, retrieve dataset info from the Mainframe as well as VSAM dataset info from a listcat file',
+            required=False)
+
+        jobs.add_argument(
+            '-f',
+            '--ftp',
+            action='store_true',
+            dest='ftp',
+            help=
+            'flag to trigger FTP execution, download datasets from Mainframe',
+            required=False)
 
         jobs.add_argument(
             '-m',
             '--migration',
-            action='store',
-            choices=['C', 'G'],
+            action='store_true',
             dest='migration',
-            help='''trigger dsmigin to start dataset migration. Potential options:
-                'C' for dataset conversion ONLY
-                'G' for dataset conversion & generation''',
-            metavar='FLAG',
-            required=False,
-            type=str)
+            help=
+            '''flag to trigger dsmigin, executes dataset conversion and generation in the OpenFrame environment to start dataset migration''',
+            required=False)
 
         # Optional arguments
-        #TODO Make it possible to specify a list of directories, separated with a ':'
-        optional.add_argument('-C',
-                              '--copybook-directory',
-                              action='store',
-                              dest='copybook_directory',
-                              help='path of the copybook directory',
-                              metavar='DIRECTORY',
-                              required=False,
-                              type=str)
+        optional.add_argument(
+            '-C',
+            '--conversion',
+            action='store_true',
+            dest='conversion',
+            help=
+            'flag to modify the behavior of dsmigin, executes conversion only',
+            required=False)
+
+        optional.add_argument(
+            '-i',
+            '--ip-address',
+            action='store',
+            dest='ip_address',
+            help=
+            'ip address required for any command that involves FTP connection to Mainframe (listcat and ftp)',
+            metavar='IP_ADDRESS',
+            required=False,
+            type=str)
 
         optional.add_argument(
             '-L',
@@ -137,36 +135,34 @@ class Main(object):
             required=False,
             type=str)
 
-        # It is not possible to handle datasets download at once, there is a certain timeout using FTP to download from the mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little.
-        optional.add_argument('-n',
-                              '--number',
+        # It is not possible to handle all dataset downloads at once, there is a certain timeout using FTP to download from the Mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little. This also allows to limit CPU load on the Mainframe
+        optional.add_argument(
+            '-n',
+            '--number',
+            action='store',
+            dest='number',
+            help='number of datasets to be downloaded from the Mainframe',
+            metavar='NUMBER',
+            required=False,
+            type=int)
+
+        optional.add_argument('-p',
+                              '--prefix',
                               action='store',
-                              dest='number',
-                              help='number of datasets to be handled',
-                              metavar='INTEGER',
+                              dest='prefix',
+                              help='prefix used for VSAM datasets download',
+                              metavar='PREFIX',
                               required=False,
-                              type=int)
+                              type=str)
 
-        optional.add_argument(
-            '-p',
-            '--ip-address',
-            action='store',
-            dest='ip_address',
-            help=
-            'ip address required for any command that involves FTP execution',
-            metavar='IP_ADDRESS',
-            required=False,
-            type=str)
-
-        optional.add_argument(
-            '-t',
-            '--tag',
-            action='store',
-            dest='tag',
-            help='tag for the CSV file snd the log file names',
-            metavar='TAG',
-            required=False,
-            type=str)
+        optional.add_argument('-t',
+                              '--tag',
+                              action='store',
+                              dest='tag',
+                              help='tag for the CSV backup and log file names',
+                              metavar='TAG',
+                              required=False,
+                              type=str)
 
         # Other arguments
         others.add_argument('-h',
@@ -181,14 +177,6 @@ class Main(object):
             help='show this version message and exit',
             version='%(prog)s {version}'.format(version=__version__))
 
-        #    arg_parser.add_argument('-b',
-        #                     '--backup-directory',
-        #                     action='store',
-        #                     dest='backup',
-        #                     help='Specify backup directory for csv file',
-        #                     metavar='DIRECTORY',
-        #                     required=False)
-
         # Do the parsing
         if len(sys.argv) == 1:
             parser.print_help(sys.stdout)
@@ -201,42 +189,34 @@ class Main(object):
 
         # Analyze CSV file, making sure a file with .csv extension is specified
         try:
-            csv_path = os.path.expandvars(args.csv_file)
-            extension = csv_path.rsplit('.', 1)[1]
-            if extension != 'csv':
+            status = Utils().check_file_extension(args.csv, 'csv')
+            if status is False:
                 raise TypeError()
-        except IndexError:
-            Log().logger.critical(
-                'IndexError: Given CSV file does not have a .csv extension: ' +
-                csv_path)
-            sys.exit(-1)
         except TypeError:
-            Log().logger.critical('TypeError: Expected .csv extension, found ' +
-                                  extension + ': ' + csv_path)
+            Log().logger.critical(
+                'TypeError: Invalid -c, --csv option: Expected .csv extension')
             sys.exit(-1)
 
         # Analyze missing optional arguments
+        try:
+            if args.listcat and args.ip_address is None:
+                raise Warning()
+        except Warning:
+            Log().logger.warning(
+                'Warning: Missing -i, --ip-address: Listcat will skip dataset info retrieval from Mainframe and focus only on VSAM dataset info from listcat file'
+            )
+
         if args.ftp:
             try:
                 if args.ip_address is None:
                     raise SystemError()
             except SystemError:
                 Log().logger.critical(
-                    'IpAddressError: -p or --ip-address option must be specified for dataset download'
+                    'MissingArgumentError: -i, --ip-address option must be specified for dataset download from Mainframe'
                 )
                 sys.exit(-1)
 
-        if args.migration:
-            try:
-                if args.copybook_directory is None:
-                    raise SystemError()
-            except SystemError:
-                Log().logger.critical(
-                    'CopybookDirectoryError: -C or --copybook-directory option must be specified for dataset migration'
-                )
-                sys.exit(-1)
-
-        # Analyze if the argument ip_address respect valid format
+        # Analyze if the argument ip_address respect a valid format
         if args.ip_address:
             try:
                 status = Utils().analyze_ip_address(args.ip_address)
@@ -244,7 +224,7 @@ class Main(object):
                     raise SystemError()
             except SystemError:
                 Log().logger.critical(
-                    'FormatError: Invalid -p, --ip-address option: Must respect either IPv4 or IPv6 standard format'
+                    'FormatError: Invalid -i, --ip-address option: Must respect either IPv4 or IPv6 standard format'
                 )
                 sys.exit(-1)
 
@@ -258,15 +238,14 @@ class Main(object):
                     'SignError: Invalid -n, --number option: Must be positive')
                 sys.exit(-1)
 
+        #TODO listcat file is going to have a fixed name, like listcat.txt. MAke sure this file exist before proceeding
         # Analyze if listcat has been properly specified
-        #! No extension for listcat file, just must be a file and not a directory
         #NO EXTENSION
         # if args.listcat:
         #     try:
         #         listcat_path = os.path.expandvars(args.listcat)
         #         if os.path.isdir(listcat_path):
         #             Log().logger.debug('Listcat directory specified.')
-        #             #TODO Analyze extension of all listcat files
         #         else:
         #             Log().logger.debug('Listcat file specified.')
         #             extension = listcat_path.rsplit('.', 1)[1]
@@ -285,39 +264,35 @@ class Main(object):
 
         return args
 
-    def _create_jobs(self, args, csv):
+    def _create_jobs(self, args, storage_resource):
         """Creates job depending on the input parameters.
 
-            Args:
-                args:
-                csv:
-
-            Returns:
-                A list of Job objects.
+            Arguments:
+                args {ArgParse object} -- Contains all the input parameters of the program.
+                storage_resource {Storage Resource object} -- Could be a CSV file or a database object, used to store dataset records.
 
             Raises:
-                #TODO Complete docstrings, maybe change the behavior to print traceback only with DEBUG as log level"""
+                #TODO Complete docstrings, maybe change the behavior to print traceback only with DEBUG as log level
+
+            Returns:
+                list -- List of jobs."""
         jobs = []
-        job_factory = JobFactory(csv)
+        job_factory = JobFactory(storage_resource)
 
         try:
-            if args.ftp:
-                Context.ftp_type = args.ftp
+            if args.listcat:
                 Context().ip_address = args.ip_address
-                Context().number_datasets = args.number
-                Context().set_dataset_directory()
-                job = job_factory.create('ftp')
-                jobs.append(job)
-            if args.listcat != None:
-                Context().listcat_file_path = args.listcat
-                Context().set_listcat_directory()
                 job = job_factory.create('listcat')
                 jobs.append(job)
-            if args.migration != None:
+            if args.ftp:
+                Context().ip_address = args.ip_address
+                Context().number_datasets = args.number
+                Context().prefix = args.prefix
+                job = job_factory.create('ftp')
+                jobs.append(job)
+            if args.migration:
                 Context().encoding_code = 'US'
-                Context().migration_type = args.migration
-                Context().set_conversion_directory()
-                Context().copybook_directory = args.copybook_directory
+                Context().conversion = args.conversion
                 job = job_factory.create('migration')
                 jobs.append(job)
         except:
@@ -332,7 +307,7 @@ class Main(object):
         """Performs all the steps to execute jobs of oftools_dsmigin.
 
             Returns:
-                An integer, the general return code of the program."""
+                integer -- General return code of the program."""
         # For testing purposes. allow to remove logs when executing coverage
         # logging.disable(logging.CRITICAL)
         Log().open_stream()
@@ -340,33 +315,47 @@ class Main(object):
         # Parse command-line options
         args = self._parse_arg()
 
-        # Initialize variables for program execution
-        Context().working_directory = args.working_directory
-        Context().tag = args.tag
-
-        # Set log level and initialize log file
-        log_file_name = 'oftools_dsmigin_' + Context().tag + '_' + Context(
-        ).timestamp + '.log'
-        log_file_path = os.path.join(Context().log_directory, log_file_name)
-
+        # Set log level
         Log().set_level(args.log_level)
+
+        # Variables initialization for program execution
+        rc = 0
+        Context().tag = args.tag
+        Context().working_directory = args.working_directory
+
+        # Initialize log file
+        log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
+        ).full_timestamp + '.log'
+        log_file_path = Context().log_directory + '/' + log_file_name
         Log().open_file(log_file_path)
 
-        # statistics = Statistics()
-
-        # CSV file processing
+        # CSV file initialization
         csv = CSV(args.csv)
+
+        # statistics = Statistics()
 
         # Create jobs
         jobs = self._create_jobs(args, csv)
 
-        # Run jobs
-        for job in jobs:
-            rc = job.run()
-            if rc < 0:
-                Log().logger.error(
-                    'An error occurred. Aborting program execution')
-                break
+        for i in range(len(Context().records)):
+            record = Context().records[i].columns
+
+            # Run jobs
+            for job in jobs:
+                rc = job.run(record)
+                if rc != 0:
+                    # Skipping dataset
+                    if rc in (1, 2):
+                        continue
+                    # Download limit reached
+                    elif rc == 3:
+                        Log().logger.info(
+                            'Terminating program execution')
+                        break
+                    else:
+                        Log().logger.error(
+                            'An error occurred. Aborting program execution')
+                        break
 
         # rc = statistics.run()
         # if rc < 0:

@@ -34,37 +34,17 @@ class Listcat(object):
             _update_csv_records(): Take the liscat extracted data to update the CSV records.
             run(records): Main method for listcat data retrieval."""
 
-    def __init__(self):
+    def __init__(self, record):
         """Initialize all attributes.
             """
-        self._file_path = os.path.expandvars(Context().listcat_file_path)
-        self._file_path = os.path.abspath(self._file_path)
-        self._file_name = self._file_path.rsplit('/', 1)[1]
-        # Listcat file does not have any extension
-        self._root_file_name = self._file_name
+        self._file_path = Context().listcat_directory + '/' + record[
+            Col.DSN.value]
 
         self._data = None
-        self._records = []
+        self._record = record
+        self._listcat_record = []
 
-        self._backup()
-        self._read()
-
-    def _backup(self):
-        """Creates a backup of the listcat file.
-
-            Pattern for backup file naming: name_tag_timestamp_bckp.csv. This method make sure that the backup folder already exist before creating the first backup. It then copy the CSV file file to the target directory. Save the backup file in a dedicated directory under the working directory.
-            # Naming convention for the backup files
-
-            Returns:
-                An integer, the return code of the method."""
-        listcat_backup_file_path = Context(
-        ).listcat_directory + self._root_file_name
-
-        rc = Utils().copy_file(self._file_path, listcat_backup_file_path)
-
-        return rc
-
-    def _read(self):
+    def read(self):
         """Read the content of the listcat output file and store the result in a string.
 
             One listcat file can contains the info of one or multiple datasets.
@@ -74,13 +54,25 @@ class Listcat(object):
 
             Returns:
                 A string, the data extracted from the listcat text file."""
-        with open(self._file_path, mode='r') as fd:
-            self._data = fd.read()
+        rc = 0
+        try:
+            with open(self._file_path, mode='r') as fd:
+                self._data = fd.read()
 
-        if self._data != None:
-            Log().logger.debug('[LISCAT] Listcat file successfully imported')
+            if self._data != None:
+                Log().logger.debug(
+                    '[listcat] Listcat file successfully imported')
+                rc = 0
+            else:
+                rc = -1
+        except FileNotFoundError:
+            Log().logger.info(
+                '[listcat] FileNotFoundError: No such file or directory:' +
+                self._file_path)
+            Log().logger.info('[listcat] Skipping listcat info retrieval')
+            rc = 1
 
-        return self._data
+        return rc
 
     def analyze(self):
         """Analyze the data extracted from the listcat output file.
@@ -88,22 +80,66 @@ class Listcat(object):
             Returns:
                 A list, the listcat information correctly formatted and organized."""
         rc = 0
-        lines = self._data.splitlines()
 
-        for i in range(len(lines)):
-            fields = lines[i].split()
-            # TODO update listcat result processing here
-            if fields[0] == 'DSN':
-                record = []
-                recfm = lines[i + 1].split()[1]
-                keyoff = lines[i + 2].split()[2]
-                record.append(recfm, keyoff)
+        if self._data != None:
+            lines = self._data.splitlines()
 
-                self._records.append(record)
+            # for i in range(len(lines)):
+            #     fields = lines[i].split()
+            #     # TODO update listcat result processing here
+            #     if fields[0] == 'DSN':
+            #         # recfm = lines[i + 1].split()[1]
+
+            #         self._record[Col.VSAM.value] = ''
+            #         self._record[Col.KEYOFF.value] = lines[i + 2].split()[2]
+            #         self._record[Col.KEYLEN.value] = ''
+            #         self._record[Col.MAXLRECL.value] = ''
+            #         self._record[Col.AVGLRECL.value] = ''
+            #         self._record[Col.CISIZE.value] = ''
+            #         if self._record[Col.CISIZE.value] == 'INDEXED':
+            #             self._record[Col.VSAM.value] = 'KS'
+
+            flag = 0
+            for line in lines:
+                if flag == 1:                         
+                    info = line.strip()
+                    info = info.replace("-","")
+                    infoList = info.split(' ')
+                    print(info)
+                    for j in range(len(infoList)):
+                        if infoList[j].startswith("RKP"):
+                            rkp = infoList[j].replace("RKP","")
+                            self._record[Col.KEYOFF.value] = rkp
+                            print("KEYOFF: " + str(rkp))
+                        elif infoList[j].startswith("KEYLEN"):
+                            keylen = infoList[j].replace("KEYLEN","")
+                            self._record[Col.KEYLEN.value] = keylen
+                            print("KEYLEN: " + str(keylen))
+                        elif infoList[j].startswith("MAXLRECL"):
+                            maxlrecl = infoList[j].replace("MAXLRECL","")
+                            self._record[Col.MAXLRECL.value] = maxlrecl
+                            print("MAXLRECL: " + str(maxlrecl))
+                        elif infoList[j].startswith("AVGLRECL"):
+                            avglrecl = infoList[j].replace("AVGLRECL","")
+                            self._record[Col.AVGLRECL.value] = avglrecl
+                            print("AVGLRECL: " + str(avglrecl))
+                        elif infoList[j].startswith("CISIZE"):
+                            cisize = infoList[j].replace("CISIZE","")
+                            self._record[Col.CISIZE.value] = cisize
+                            print("CISIZE: " + str(cisize))
+                        elif infoList[j].startswith("INDEXED"):
+                            vsam = "KS"
+                            self._record[Col.VSAM.value] = vsam
+                            print("VSAM: " + vsam)
+                if line.find("DATA ------- " + self._record[Col.DSN.value]) >= 0:
+                    flag = 1
+                    self._record[Col.RECFM.value] = "VB"
+                if line.find("INDEX ------ " + self._record[Col.DSN.value]) >= 0:            
+                    break
 
         return rc
 
-    def update_dataset_records(self):
+    def update_dataset_record(self):
         """Take the liscat extracted data to update the CSV records.
 
             It first update the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.
@@ -111,51 +147,33 @@ class Listcat(object):
             Returns:
                 A 2D-list, the updated dataset data with listcat information for VSAM datasets."""
         rc = 0
-        dataset_records = Context().records
-        dsn_list = [
-            dataset_records.columns[Col.DSN.value] for record in dataset_records
-        ]
 
-        for record in self._records:
-            dsn = record[Col.DSN.value]
+        if self._data != None:
+            dsn_list = []
+            records = Context().records
+            for record in records:
+                dsn_list.append(record.columns[Col.DSN.value])
+            # dsn_list = [records.columns[Col.DSN.value] for _ in records]
 
-            if dsn in dsn_list:
-                i = dsn_list.index(dsn)
-                dataset_records[i].columns[Col.RECFM.value] = record[
-                    Col.RECFM.value]
-                dataset_records[i].columns[Col.KEYOFF.value] = record[
-                    Col.KEYOFF.value]
-                dataset_records[i].columns[Col.KEYLEN.value] = record[
-                    Col.KEYLEN.value]
-                dataset_records[i].columns[Col.MAXLRECL.value] = record[
-                    Col.MAXLRECL.value]
-                dataset_records[i].columns[Col.AVGLRECL.value] = record[
-                    Col.AVGLRECL.value]
-                dataset_records[i].columns[Col.CISIZE.value] = record[
-                    Col.CISIZE.value]
-                if record[Col.CISIZE.value] == 'INDEXED':
-                    dataset_records[i][Col.VSAM.value] = 'KS'
-                # TODO Finish the update of the fields
-
-            index_dsn = dsn + '.INDEX'
+            index_dsn = self._record[Col.DSN.value] + '.INDEX'
             if index_dsn in dsn_list:
                 # Replace the value in the column named DSORG by VSAM in the records list
-                dataset_records.columns[i][Col.DSORG.value] = 'VSAM'
+                self._record[Col.DSORG.value] = 'VSAM'
                 # Identify the position of the index DSN in the dsn_list
-                j = dsn_list.index(index_dsn)
+                i = dsn_list.index(index_dsn)
                 # Remove the line where this DSN appears in the records list
-                dataset_records.remove(dataset_records[j])
+                Context().records.remove(Context().records[i])
                 Log().logger.info(
                     'Removed from dataset list: ' + index_dsn +
                     '. This is not useful for migration to OpenFrame.')
 
-            data_dsn = dsn + '.DATA'
+            data_dsn = self._record[Col.DSN.value] + '.DATA'
             if data_dsn in dsn_list:
-                dataset_records.columns[i][Col.DSORG.value] = 'VSAM'
+                self._record[Col.DSORG.value] = 'VSAM'
                 # Identify the position of the data DSN in the dsn_list
-                k = dsn_list.index(data_dsn)
+                j = dsn_list.index(data_dsn)
                 # Remove the line where this DSN appears in the records list
-                dataset_records.remove(dataset_records[k])
+                Context().records.remove(Context().records[j])
                 Log().logger.info(
                     '[LISTCAT] Removed from dataset list: ' + data_dsn +
                     '. This is not useful for migration to OpenFrame.')

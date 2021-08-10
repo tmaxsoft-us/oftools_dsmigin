@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Module to log all the events of the program execution.
 
@@ -88,7 +88,7 @@ class Log(object, metaclass=SingletonType):
             self._formatter = logging.Formatter(
                 fmt=
                 "%(asctime)-8s [%(levelname)-8s] %(message)s (%(module)s:%(lineno)s)",
-                datefmt="%Y-%m-%d_%H:%M:%S")
+                datefmt="%H:%M:%S")
 
         self._level = level
         self._logger.setLevel(self._level_dict[level])

@@ -15,6 +15,7 @@ import enum
 
 # Owned modules
 
+
 @enum.unique
 class Col(enum.Enum):
     """Just an enumeration of all the columns we need in our CSV file.
@@ -24,19 +25,21 @@ class Col(enum.Enum):
     RECFM = 2
     LRECL = 3
     BLKSIZE = 4
-    DSORG   = 5
-    VOLSER  = 6
-    VSAM    = 7
-    KEYOFF  = 8
-    KEYLEN  = 9
+    DSORG = 5
+    VOLSER = 6
+    VSAM = 7
+    KEYOFF = 8
+    KEYLEN = 9
     MAXLRECL = 10
     AVGLRECL = 11
     CISIZE = 12
-    IGNORE  = 13
-    FTP = 14
-    FTPDATE = 15
-    FTPDURATION = 16
-    DSMIGIN = 17
-    DSMIGINDATE = 18
-    DSMIGINDURATION = 19
+    IGNORE = 13
+    LISTCAT = 14
+    LISTCATDATE = 15
+    FTP = 16
+    FTPDATE = 17
+    FTPDURATION = 18
+    DSMIGIN = 19
+    DSMIGINDATE = 20
+    DSMIGINDURATION = 21
     # TODO Catalog column

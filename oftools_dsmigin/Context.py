@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Set of variables and parameters for program execution.
 
@@ -58,14 +58,12 @@ class Context(object, metaclass=SingletonMeta):
         """Initializes all attributes of the context.
             """
         # Input parameters - different jobs
-        self._ftp_type = ''
         self._ip_address = ''
         self._number_datasets = 0
-
-        self._listcat_file_path = ''
+        self._prefix = ''
 
         self._encoding_code = ''
-        self._migration_type = ''
+        self._conversion = False
 
         # Directories
         self._conversion_directory = ''
@@ -81,21 +79,9 @@ class Context(object, metaclass=SingletonMeta):
 
         # Other
         self._tag = ''
-        self._timestamp = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
+        self._full_timestamp = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
+        self._timestamp = datetime.datetime.today().strftime('%Y-%m-%d')
         self._init_pwd = os.getcwd()
-
-    @property
-    def ftp_type(self):
-        """Getter method for the attribute _ftp_type.
-            """
-        return self._ftp_type
-
-    @ftp_type.setter
-    def ftp_type(self, ftp):
-        """Setter method for the attribute _ftp_type.
-            """
-        if ftp is not None:
-            self._ftp_type = ftp
 
     @property
     def ip_address(self):
@@ -124,36 +110,17 @@ class Context(object, metaclass=SingletonMeta):
             self._number_datasets = number
 
     @property
-    def listcat_file_path(self):
-        """Getter method for the attribute _listcat_file_path.
+    def prefix(self):
+        """Getter method for the attribute _prefix.
             """
-        return self._listcat_file_path
+        return self._prefix
 
-    @listcat_file_path.setter
-    def listcat_file_path(self, listcat):
-        """Setter method for the attribute _listcat_result.
-
-            It first analyzes if the listcat_result has been specified and create an absolute path if necessary. Then it analyzes if the listcat result specified is a directory or a file, and creates the actual listcat_result list used for the execution of the program."""
-        if listcat is not None and not listcat.startswith('/'):
-            path_to_listcat = os.getcwd() + '/' + listcat
-        else:
-            path_to_listcat = listcat
-
-        if os.path.isdir(path_to_listcat):
-            directory = os.path.expandvars(path_to_listcat)
-            listcat_list = []
-            for root, _, files in os.walk(directory):
-                if root.startswith('.'):
-                    continue
-                for filename in files:
-                    if filename.startswith('.'):
-                        continue
-                    listcat_list.append(
-                        os.path.abspath(os.path.join(root, filename)))
-        else:
-            listcat_list = [path_to_listcat]
-
-        self._listcat_file_path = listcat_list
+    @prefix.setter
+    def prefix(self, prefix):
+        """Setter method for the attribute _prefix.
+            """
+        if prefix is not None:
+            self._prefix = prefix + '.'
 
     @property
     def encoding_code(self):
@@ -169,17 +136,16 @@ class Context(object, metaclass=SingletonMeta):
             self._encoding_code = encoding_code
 
     @property
-    def migration_type(self):
-        """Getter method for the attribute _migration_type.
+    def conversion(self):
+        """Getter method for the attribute _conversion.
             """
-        return self._migration_type
+        return self._conversion
 
-    @migration_type.setter
-    def migration_type(self, migration):
-        """Setter method for the attribute _migration_type.
+    @conversion.setter
+    def conversion(self, conversion):
+        """Setter method for the attribute _conversion.
             """
-        if migration is not None:
-            self._migration_type = migration
+        self._conversion = conversion
 
     @property
     def conversion_directory(self):
@@ -187,27 +153,11 @@ class Context(object, metaclass=SingletonMeta):
             """
         return self._conversion_directory
 
-    def set_conversion_directory(self):
-        """Setter method for the attribute _conversion_directory.
-            """
-        self._conversion_directory = self._working_directory + '/dataset_converted'
-        Utils().create_directory(self._conversion_directory)
-
     @property
     def copybook_directory(self):
         """Getter method for the attribute _copybook_directory.
             """
         return self._copybook_directory
-
-    @copybook_directory.setter
-    def copybook_directory(self, copybook_directory):
-        """Setter method for the attribute _copybook_directory.
-            """
-        if copybook_directory is not None and not copybook_directory.startswith(
-                '/'):
-            self._copybook_directory = os.getcwd() + '/' + copybook_directory
-        else:
-            self._copybook_directory = copybook_directory
 
     @property
     def csv_backup_directory(self):
@@ -221,23 +171,11 @@ class Context(object, metaclass=SingletonMeta):
             """
         return self._dataset_directory
 
-    def set_dataset_directory(self):
-        """Setter method for the attribute _dataset_directory.
-            """
-        self._dataset_directory = self._working_directory + '/dataset_download'
-        Utils().create_directory(self._dataset_directory)
-
     @property
     def listcat_directory(self):
         """Getter method for the attribute _listcat_directory.
             """
         return self._listcat_directory
-
-    def set_listcat_directory(self):
-        """Setter method for the attribute _listcat_directory.
-            """
-        self._listcat_directory = self._working_directory + '/listcat'
-        Utils().create_directory(self._listcat_directory)
 
     @property
     def log_directory(self):
@@ -257,23 +195,28 @@ class Context(object, metaclass=SingletonMeta):
 
             Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
         working_directory = os.path.expandvars(working_directory)
+        self._working_directory = os.path.abspath(working_directory)
+        rc = Utils().create_directory(self._working_directory)
+        if rc != 0:
+            return rc
 
-        if os.path.isdir(working_directory) and os.access(
-                working_directory, os.W_OK):
-            # Save absolute path to work directory to Context
-            self._working_directory = os.path.abspath(working_directory)
-            os.chdir(working_directory)
+        self._conversion_directory = self._working_directory + '/conversion'
+        Utils().create_directory(self._conversion_directory)
 
-            self._csv_backup_directory = self._working_directory + '/csv_backups'
-            Utils().create_directory(self._csv_backup_directory)
+        self._copybook_directory = self._working_directory + '/copybooks'
+        Utils().create_directory(self._copybook_directory)
 
-            self._log_directory = self._working_directory + '/log'
-            Utils().create_directory(self._log_directory)
-        else:
-            Log().logger.critical(
-                'PermissionError: Permission denied: No write access on working directory: '
-                + working_directory)
-            sys.exit(-1)
+        self._csv_backup_directory = self._working_directory + '/csv_backups'
+        Utils().create_directory(self._csv_backup_directory)
+
+        self._dataset_directory = self._working_directory + '/datasets'
+        Utils().create_directory(self._dataset_directory)
+
+        self._listcat_directory = self._working_directory + '/listcat'
+        Utils().create_directory(self._listcat_directory)
+
+        self._log_directory = self._working_directory + '/log'
+        Utils().create_directory(self._log_directory)
 
     @property
     def records(self):
@@ -293,6 +236,11 @@ class Context(object, metaclass=SingletonMeta):
             """
         if tag is not None:
             self._tag = '_' + tag
+    @property
+    def full_timestamp(self):
+        """Getter method for the attribute _full_timestamp.
+            """
+        return self._full_timestamp
 
     @property
     def timestamp(self):

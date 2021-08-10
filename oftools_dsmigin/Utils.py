@@ -20,7 +20,6 @@ import sys
 # Third-party modules
 
 # Owned modules
-from .Context import Context
 from .Log import Log
 
 
@@ -84,6 +83,9 @@ class Utils(object, metaclass=SingletonMeta):
                     break
             is_valid_ip = is_IPv6
 
+        if is_valid_ip:
+            self._ip_address = ip_address
+
         return is_valid_ip
 
     def check_command(self, shell_command):
@@ -92,9 +94,28 @@ class Utils(object, metaclass=SingletonMeta):
             Returns:
                 A boolean, True if the command does not exist and False if the command exist."""
         if shutil.which(shell_command) is None:
-            return True
-        else:
             return False
+        else:
+            return True
+
+    def check_file_extension(self, file_path, file_extension):
+        """
+        """
+        try:
+            file_path_expand = os.path.expandvars(file_path)
+            extension = file_path_expand.rsplit('.', 1)[1]
+
+            if extension == file_extension:
+                is_valid_ext = True
+            else:
+                is_valid_ext = False
+
+        except IndexError:
+            Log().logger.critical('IndexError: Given file does not have a .' +
+                                  file_extension + ' extension: ' + file_path)
+            sys.exit(-1)
+        else:
+            return is_valid_ext
 
     def copy_file(self, file_path_src, file_path_dst):
         """Copy a source file to its given destination.
@@ -112,17 +133,20 @@ class Utils(object, metaclass=SingletonMeta):
 
         return rc
 
-    def create_directory(self, directory_path):
+    def create_directory(self, directory):
         """Creates the given directory if it does not already exists.
             """
         try:
-            if not os.path.exists(directory_path):
-                os.mkdir(directory_path)
+            if os.path.isdir(directory) is False:
+                Log().logger.debug(
+                    'Directory does not exist: Creating new directory: ' +
+                    directory)
+                os.mkdir(directory)
             rc = 0
         except PermissionError:
             Log().logger.error(
                 'PermissionError: Permission denied: Directory creation failed: '
-                + directory_path)
+                + directory)
             rc = -1
 
         return rc
@@ -163,10 +187,24 @@ class Utils(object, metaclass=SingletonMeta):
                 stdout = None
                 stderr = None
                 return_code = -1
-            finally:
-                return stdout, stderr, return_code
+                return stdout,stderr, return_code
+
+            if Log().level == 'DEBUG':
+                if return_code != 0:
+                    Log().logger.error(stdout)
+                    Log().logger.error(stderr)
+                    Log().logger.error('return code: ' + str(return_code))
+                else:
+                    Log().logger.debug(stdout)
+                    Log().logger.debug(stderr)
+                    Log().logger.debug('return code: ' + str(return_code))
+            elif return_code != 0 :
+                Log().logger.error(stdout)
+                Log().logger.error(stderr)
         else:
             Log().logger.error('Command does not exist:' + root_command)
+
+        return stdout, stderr, return_code
 
     def execute_ftp_command(self, ftp_command):
         """Separate method to execute FTP command.
@@ -175,7 +213,7 @@ class Utils(object, metaclass=SingletonMeta):
         # ! We might need to use sftp (FTP over SSH) with more security
         # ! By default, connection refused on port 22. After modification of
         # ! the PROFILE to add TCP connection on port 22, still not working
-        connect_command = 'ftp << EOF\nftp ' + Context().ip_address + '\n'
+        connect_command = 'ftp ' + self._ip_address + '<< EOF\n binary\ncd ..\n'
         shell_command = connect_command + ftp_command
 
         return self.execute_shell_command(shell_command)
@@ -235,8 +273,11 @@ class Utils(object, metaclass=SingletonMeta):
                 with open(file_path, mode='r') as fd:
                     extension = file_path.rsplit('.', 1)[1]
 
-                    if extension is 'csv':
-                        file = csv.reader(fd, delimiter=',')
+                    if extension == 'csv':
+                        out = csv.reader(fd, delimiter=',')
+                        file_data = []
+                        for row in out:
+                            file_data.append(row)
                     else:
                         raise TypeError()
 
@@ -270,4 +311,4 @@ class Utils(object, metaclass=SingletonMeta):
                                   file_path)
             sys.exit(-1)
         else:
-            return file
+            return file_data

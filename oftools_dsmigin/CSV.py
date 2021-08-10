@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """This modules runs all functions related to the CSV file.
 
@@ -50,14 +50,49 @@ class CSV(object):
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
-        
+
         file_name = self._file_path.rsplit('/', 1)[1]
         self._root_file_name = file_name.split('.')[0]
 
         self._data = None
 
-        self._backup()
         self._read()
+
+    def _read(self):
+        """Reads the content of the CSV file an store the data in a list.
+
+            First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list records. 
+
+            Returns:
+                A 2D-list, the datasets data extracted from the CSV file."""
+
+        rc = 0
+
+        try:
+            if os.path.isfile(self._file_path):
+                self._backup()
+                self._data = Utils().read_file(self._file_path)
+
+                if self._data != None:
+                    for i in range(len(self._data)):
+                        if i == 0:
+                            rc = self._check_headers(self._data[i])
+                        else:
+                            record = DatasetRecord()
+                            record.columns = self._data[i]
+                            Context().records.append(record)
+
+            else:
+                raise FileNotFoundError()
+
+        except FileNotFoundError:
+            Log().logger.info('FileNotFoundError: No such file or directory: ' +
+                              self._file_path)
+            Log().logger.info('Creating CSV file from template')
+            self.write()
+
+        finally:
+            return rc
 
     def _backup(self):
         """Creates a backup of the CSV file.
@@ -67,10 +102,11 @@ class CSV(object):
 
             Returns:
                 An integer, the return code of the method."""
-        backup_file_name = self._root_file_name + '_' + Context(
-        ).tag + '_' + Context().timestamp + '.csv'
-        backup_file_path = Context().csv_backup_directory + backup_file_name
-        
+        backup_file_name = self._root_file_name + Context().tag + '_' + Context(
+        ).full_timestamp + '.csv'
+        backup_file_path = Context(
+        ).csv_backup_directory + '/' + backup_file_name
+
         rc = Utils().copy_file(self._file_path, backup_file_path)
 
         return rc
@@ -86,55 +122,35 @@ class CSV(object):
             Returns:
                 An integer, the return code of the method."""
         if len(headers) == 1:
-            Log().logger.debug('[CSV] List of dataset names only')
+            Log().logger.debug('[csv] List of dataset names only')
             rc = 1
         elif len(headers) < len(self._headers):
-            Log().logger.error('[CSV] Missing headers')
+            Log().logger.error('[csv] Missing headers')
             rc = -1
-        elif len(headers) == len(self._headers): 
+        elif len(headers) == len(self._headers):
             for i in range(len(headers)):
                 header = headers[i].strip()
                 if header == self._headers[i]:
                     rc = 0
                 else:
-                    Log().logger.error('[CSV] Typographical error on the header: ' + header)
+                    Log().logger.error(
+                        '[csv] Typographical error on the header: ' + header)
                     rc = -1
                     break
         else:
-            Log().logger.error('[CSV] Too many headers specified')
+            Log().logger.error('[csv] Too many headers specified')
             rc = -1
 
         if rc == 0:
-            Log().logger.debug('[CSV] Headers correctly specified')
+            Log().logger.debug('[csv] Headers correctly specified')
         elif rc < 0:
             Log().logger.error(
-                '[CSV] Headers are not matching with the program definition'
-            )
-            Log().logger.error('[CSV] Input file:')
+                '[csv] Headers are not matching with the program definition')
+            Log().logger.error('[csv] Input file:')
             Log().logger.error(headers)
-            Log().logger.error('[CSV] Program definition:')
+            Log().logger.error('[csv] Program definition:')
             Log().logger.error(self._headers)
             sys.exit(-1)
-
-        return rc
-
-    def _read(self):
-        """Reads the content of the CSV file an store the data in a list.
-
-            First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list records. 
-
-            Returns:
-                A 2D-list, the datasets data extracted from the CSV file."""
-        self._data = Utils().read_file(self._file_path)
-
-        if self._data != None:
-            for i in range(len(self._data)):
-                if i == 0:
-                    rc = self._check_headers(self._data[i])
-                else:
-                    record = DatasetRecord()
-                    record.columns = self._data[i]
-                    Context().records.append(record)
 
         return rc
 
@@ -154,13 +170,17 @@ class CSV(object):
             csv_data = csv.writer(fd, delimiter=',')
             # Writing column headers to CSV file
             rc = csv_data.writerow(self._headers)
-            Log().logger.debug('[CSV] Return code of the call to the write method for the headers:' + rc)
+            # Log().logger.debug(
+            #     '[csv] Return code of the call to the write method for the headers:'
+            #     + str(rc))
 
             # Writing records to CSV file
             for record in Context().records:
-                rc = csv_data.writerow(record)
-                Log().logger.debug('[CSV] Return code of the call to the write method for the data:' + rc)
+                rc = csv_data.writerow(record.columns)
+                # Log().logger.debug(
+                #     '[csv] Return code of the call to the write method for the data:'
+                #     + str(rc))
             #TODO Need a performance test
-            # rc = csv_data.writerows(Context().records)    
+            # rc = csv_data.writerows(Context().records)
 
         return rc

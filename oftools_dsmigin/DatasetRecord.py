@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 """
@@ -10,10 +10,11 @@
 # Owned modules
 from .MigrationEnum import Col
 
+
 class DatasetRecord(object):
     """
         """
-    
+
     def __init__(self):
         """
             """
@@ -30,4 +31,4 @@ class DatasetRecord(object):
         """
             """
         for i in range(len(columns)):
-            self._columns[i] = columns[i].replace(' ','')
+            self._columns[i] = columns[i].replace(' ', '')

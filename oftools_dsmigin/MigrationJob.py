@@ -71,98 +71,107 @@ class MigrationJob(Job):
                 An integer, the return code of the method."""
         rc = 0
         unset_list = ('', ' ', None)
-        root_message = '[migration] Skipping dataset: ' + record[
-            Col.DSN.value] + '. '
+        root_skipping_message = '[migration] Skipping dataset: ' + record[
+            Col.DSN.value] + ': '
 
-        # Missing information for migration execution
+        # # Dataset organization considerations - missing information for successful migration
         if record[Col.DSORG.value] == 'PO' or record[Col.DSORG.value] == 'PS':
             if record[Col.COPYBOOK.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing COPYBOOK information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.LRECL.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing record length LRECL information for the given dataset'
                 )
-                rc = -1
+                rc = 1
             if record[Col.BLKSIZE.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing block size BLKSIZE information for the given dataset'
                 )
-                rc = -1
+                rc = 1
             if record[Col.RECFM.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing record format RECFM information for the given dataset'
                 )
-                rc = -1
+                rc = 1
 
         elif record[Col.DSORG.value] == 'VSAM':
+            if Context().prefix == '':
+                Log().logger.warning(
+                    root_skipping_message +
+                    'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
+                )
+                rc = 1
             if record[Col.COPYBOOK.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing COPYBOOK information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.RECFM.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing record format RECFM information for the given dataset'
                 )
-                rc = -1
+                rc = 1
             if record[Col.VSAM.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing VSAM information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.KEYOFF.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing KEYOFF information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.KEYLEN.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing KEYLEN information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.MAXLRECL.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing MAXLRECL information for the given dataset')
-                rc = -1
+                rc = 1
             if record[Col.AVGLRECL.value] in unset_list:
-                Log().logger.info(
-                    root_message +
+                Log().logger.warning(
+                    root_skipping_message +
                     'Missing AVGLRECL information for the given dataset')
-                rc = -1
+                rc = 1
 
         elif record[Col.DSORG.value] in unset_list:
-            Log().logger.info(root_message +
-                              'Missing DSORG information for the given dataset')
-            rc = -1
-
-        # Skipping dataset migration - ignore
-        if record[Col.IGNORE.value] == 'YES':
-            Log().logger.info(root_message + 'IGNORE flag set to "Yes"')
-            rc = -1
-        
-        #TODO Evaluates FTP status
-
-        # Skipping dataset migration - DSMIGIN set to No
-        if record[Col.DSMIGIN.value] == 'NO':
-            Log().logger.debug(root_message + 'DSMIGIN flag set to "No"')
-            rc = -1
-        # Skipping dataset migration - Successful, already done
-        elif record[Col.DSMIGIN.value] == 'SUCCESS':
-            Log().logger.debug(root_message + 'Already successfully migrated')
-            rc = -1
-        # Retrying dataset migration - Previously failed
-        elif record[Col.DSMIGIN.value] == 'FAILED' and rc == 0:
-            Log().logger.info(
-                '[migration] Last migration failed. Going to try again')
+            Log().logger.warning(
+                root_skipping_message +
+                'Missing DSORG information for the given dataset')
             rc = 1
+
+        else:
+            Log().logger.error(
+                root_skipping_message +
+                'Invalid DSORG information for the given dataset')
+            rc = 1
+
+        # Evaluating potential reasons of skipping if dataset consideration are ok
+        if rc == 0:
+            if record[Col.IGNORE.value] == 'Y':
+                Log().logger.info(root_skipping_message + 'IGNORE set to "Y"')
+                rc = 1
+            elif record[Col.DSMIGIN.value] == 'N':
+                Log().logger.debug(root_skipping_message +
+                                   'Dataset already successfully migrated')
+                rc = 1
+            elif record[Col.DSMIGIN.value] in ('', 'Y', 'F'):
+                Log().logger.debug('')
+                rc = 0
+            elif record[Col.FTP.value] == 'F':
+                Log().logger.info(root_skipping_message +
+                                  'FTP set to "F", failed download')
+                rc = 1
 
         return rc
 
@@ -177,7 +186,7 @@ class MigrationJob(Job):
         rc = 0
         # COPYBOOK name needs to be manually entered in the CSV file and then this generation is performed for the migration
         cobgensch_command = 'cobgensch ' + Context().copybook_directory
-        cobgensch_command += record[Col.COPYBOOK.value]
+        cobgensch_command += '/' + record[Col.COPYBOOK.value]
         cobgensch_command = Utils().format_command(cobgensch_command)
         _, _, rc = Utils().execute_shell_command(cobgensch_command)
 
@@ -195,7 +204,7 @@ class MigrationJob(Job):
         os.chdir(po_directory)
         rc = 0
 
-        if Context().migration_type == 'C':
+        if Context().conversion:
             # Creating directory for dataset conversion
             try:
                 dataset_conv_dir = Context().conversion_directory + record[
@@ -212,21 +221,22 @@ class MigrationJob(Job):
 
             for member in os.listdir(po_directory):
                 # dsmigin command
-                source_file = po_directory + '/' + member
-                dest_file = dataset_conv_dir + '/' + member
+                src_file = po_directory + '/' + member
+                dst_file = dataset_conv_dir + '/' + member
                 options = ' -e ' + Context().encoding_code
-                options += ' -s ' + record[Col.COPYBOOK.value].split(
-                    '.')[0] + '.conv'
+                options += ' -s ' + record[Col.COPYBOOK.value].rsplit(
+                    '.', 1)[0] + '.conv'
                 options += ' -l ' + record[Col.LRECL.value]
                 options += ' -o PS'
                 options += ' -b ' + record[Col.BLKSIZE.value]
                 options += ' -f L'
-                options += ' -' + Context().migration_type + ' '
+                #TODO Change the line below, that is not going to work
+                options += ' -' + Context().conversion + ' '
                 options += ' -sosi 6'
                 # Forced migration
                 options += ' -F'
 
-                dsmigin_command = 'dsmigin ' + source_file + ' ' + dest_file + options
+                dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
                 dsmigin_command = Utils().format_command(dsmigin_command)
                 _, _, rc = Utils().execute_shell_command(dsmigin_command)
                 if rc != 0:
@@ -257,12 +267,12 @@ class MigrationJob(Job):
 
             for member in os.listdir(po_directory):
                 # dsmigin command
-                source_file = po_directory + '/' + member
-                dest_file = record[Col.DSN.value]
+                src_file = po_directory + '/' + member
+                dst_file = record[Col.DSN.value]
                 options = ' -m ' + member
                 options += ' -e ' + Context().encoding_code
-                options += ' -s ' + record[Col.COPYBOOK.value].split(
-                    '.')[0] + '.conv'
+                options += ' -s ' + record[Col.COPYBOOK.value].rsplit(
+                    '.', 1)[0] + '.conv'
                 options += ' -l ' + record[Col.LRECL.value]
                 options += ' -o ' + record[Col.DSORG.value]
                 options += ' -b ' + record[Col.BLKSIZE.value]
@@ -275,7 +285,7 @@ class MigrationJob(Job):
                 options += ' -sosi 6'
                 options += ' -F'  # Forced migration
 
-                dsmigin_command = 'dsmigin ' + source_file + ' ' + dest_file + options
+                dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
                 dsmigin_command = Utils().format_command(dsmigin_command)
                 _, _, rc = Utils().execute_shell_command(dsmigin_command)
                 if rc != 0:
@@ -297,32 +307,33 @@ class MigrationJob(Job):
 
         # ? Useless since we force migration by default?
         # dsdelete command
-        source_file = record[Col.DSN.value]
-        dsdelete_command = 'dsdelete ' + source_file
+        src_file = record[Col.DSN.value]
+        dsdelete_command = 'dsdelete ' + src_file
 
         dsdelete_command = Utils().format_command(dsdelete_command)
         _, _, rc = Utils().execute_shell_command(dsdelete_command)
 
         # dsmigin command
-        source_file = record[Col.DSN.value]
-        if Context().migration_type == 'C':
-            dest_file = Context().conversion_directory + '/' + record[
+        src_file = Context().dataset_directory + '/' + record[Col.DSN.value]
+        if Context().conversion:
+            dst_file = Context().conversion_directory + '/' + record[
                 Col.DSN.value]
         else:
-            dest_file = record[Col.DSN.value]
+            dst_file = record[Col.DSN.value]
 
         options = ' -e ' + Context().encoding_code
-        options += ' -s ' + record[Col.COPYBOOK.value].split('.')[0] + '.conv'
+        options += ' -s ' + record[Col.COPYBOOK.value].rsplit('.',
+                                                              1)[0] + '.conv'
         options += ' -f ' + record[Col.RECFM.value]
         options += ' -l ' + record[Col.LRECL.value]
         options += ' -b ' + record[Col.BLKSIZE.value]
         options += ' -o ' + record[Col.DSORG.value]
         options += ' -sosi 6'
         options += ' -F'  # Forced migration
-        if Context().migration_type == 'C':
+        if Context().conversion:
             options += ' -C'
 
-        dsmigin_command = 'dsmigin ' + source_file + ' ' + dest_file + options
+        dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
         dsmigin_command = Utils().format_command(dsmigin_command)
         _, _, rc = Utils().execute_shell_command(dsmigin_command)
 
@@ -337,52 +348,94 @@ class MigrationJob(Job):
             Returns:
                 An integer, the return code of the method."""
         rc = 0
-
-        if Context().migration_type != 'C':
-            # idcams delete command
-            source_file = record[Col.DSN.value]
-            options = ' -t CL'
-
-            idcams_delete_command = 'idcams delete' + ' -n ' + source_file + options
-            idcams_delete_command = Utils().format_command(
-                idcams_delete_command)
-            _, _, rc = Utils().execute_shell_command(idcams_delete_command)
-
-            # idcams define command
-            source_file = record[Col.DSN.value]
-            options = ' -o ' + record[Col.VSAM.value]
-            options += ' -l ' + record[Col.AVGLRECL.value]
-            options += ',' + record[Col.MAXLRECL.value]
-            options += ' -k ' + record[Col.KEYLEN.value]
-            options += ',' + record[Col.KEYOFF.value]
-            options += '-t CL'
-
-            idcams_define_command = 'idcams define' + ' -n ' + source_file + options
-            idcams_define_command = Utils().format_command(
-                idcams_define_command)
-            _, _, rc = Utils().execute_shell_command(idcams_define_command)
+        file_name = Context().prefix + record[Col.DSN.value]
 
         # dsmigin command
-        source_file = record[Col.DSN.value]
-        if Context().migration_type == 'C':
-            dest_file = Context().conversion_directory + '/' + record[
-                Col.DSN.value]
+        src_file = file_name
+        if Context().conversion:
+            dst_file = Context().conversion_directory + '/' + file_name
         else:
-            dest_file = record[Col.DSN.value]
+            dst_file = file_name
 
         options = ' -e ' + Context().encoding_code
-        options += ' -s ' + record[Col.COPYBOOK.value].split('.')[0] + '.conv'
+        options += ' -s ' + record[Col.COPYBOOK.value].rsplit('.',
+                                                              1)[0] + '.conv'
         options += ' -f ' + record[Col.RECFM.value]
         options += ' -R'
         options += ' -sosi 6'
         options += ' -F'  # Forced migration
-        if Context().migration_type == 'C':
+        if Context().conversion:
             options += ' -C'
 
-        dsmigin_command = 'dsmigin ' + source_file + ' ' + dest_file + options
+        dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
         dsmigin_command = Utils().format_command(dsmigin_command)
         _, _, rc = Utils().execute_shell_command(dsmigin_command)
 
+        # idcams delete command
+        src_file = file_name
+        options = ' -t CL'
+
+        idcams_delete_command = 'idcams delete' + ' -n ' + src_file + options
+        idcams_delete_command = Utils().format_command(idcams_delete_command)
+        _, _, rc = Utils().execute_shell_command(idcams_delete_command)
+
+        # idcams define command
+        src_file = file_name
+        options = ' -o ' + record[Col.VSAM.value]
+        options += ' -l ' + record[Col.AVGLRECL.value]
+        options += ',' + record[Col.MAXLRECL.value]
+        options += ' -k ' + record[Col.KEYLEN.value]
+        options += ',' + record[Col.KEYOFF.value]
+        options += ' -c SYS1.MASTER.ICFCAT'
+        options += ' -t CL'
+        options += ' -v DEFVOL'
+
+        idcams_define_command = 'idcams define' + ' -n ' + src_file + options
+        idcams_define_command = Utils().format_command(idcams_define_command)
+        _, _, rc = Utils().execute_shell_command(idcams_define_command)
+
+        # idcams repro command
+        src_file = file_name
+        dst_file = record[Col.DSN.value]
+
+        idcams_repro_command = 'idcams repro' + ' -i ' + src_file + ' -o ' + dst_file
+        idcams_repro_command = Utils().format_command(idcams_repro_command)
+        _, _, rc = Utils().execute_shell_command(idcams_repro_command)
+
+        # dsdelete command on the NVSAM dataset
+        dsdelete_command = 'dsdelete ' + file_name
+        dsdelete_command = Utils().format_command(dsdelete_command)
+        _, _, rc = Utils().execute_shell_command(dsdelete_command)
+
+        return rc
+
+    def _migrate(self, record):
+        """
+        """
+        start_time = time.time()
+
+        if record[Col.DSORG.value] == 'PO':
+            rc = self._migrate_PO(record)
+        elif record[Col.DSORG.value] == 'PS':
+            rc = self._migrate_PS(record)
+        elif record[Col.DSORG.value] == 'VSAM':
+            rc = self._migrate_VSAM(record)
+
+        elapsed_time = time.time() - start_time
+
+        # Processing the result of the migration
+        if rc == 0:
+            status = 'SUCCESS'
+            record[Col.DSMIGINDATE.value] = Context().timestamp
+            record[Col.DSMIGINDURATION.value] = str(round(elapsed_time, 4))
+            if record[Col.DSMIGIN.value] != 'F':
+                record[Col.DSMIGIN.value] = 'N'
+        else:
+            status = 'FAILED'
+
+        Log().logger.info('MIGRATION ' + status + ' (' +
+                          str(round(elapsed_time, 4)) + ' s)')
+        print('')
         return rc
 
     def _clear_conversion_directory(self):
@@ -405,7 +458,7 @@ class MigrationJob(Job):
 
         return rc
 
-    def run(self):
+    def run(self, record):
         """Main method for dataset migration from Linux environment to OpenFrame volume.
 
             Args:
@@ -417,69 +470,24 @@ class MigrationJob(Job):
         os.chdir(Context().dataset_directory)
         rc = 0
 
-        for i in range(len(Context().records)):
-            record = Context().records[i].columns
+        # Skipping dataset migration under specific conditions
+        rc = self._analyze(record)
+        if rc == 1:
+            return rc
 
-            # Skipping dataset migration under specific conditions
-            rc = self._analyze(record)
-            if rc < 0:
-                continue
+        rc = self._cobgensch(record)
+        if rc != 0:
+            return rc
+            # Add a certain condition
 
-            start_time = time.time()
-
-            rc = self._cobgensch(record)
-            if rc < 0:
-                continue
-                # Add a certain condition
-
-            if record[Col.DSORG.value] == 'PO':
-                rc = self._migrate_PO(record)
-            elif record[Col.DSORG.value] == 'PS':
-                rc = self._migrate_PS(record)
-            elif record[Col.DSORG.value] == 'VSAM':
-                rc = self._migrate_VSAM(record)
-            else:
-                Log().logger.info('[migration] Invalid DSORG "' +
-                                  record[Col.DSORG.value] +
-                                  '" for the given dataset: ' +
-                                  record[Col.DSN.value])
-                Log().logger.info(
-                    '[migration] Supported DSORG: PO, PS, and VSAM')
-                rc = -1
-                continue
-
-            elapsed_time = time.time() - start_time
-            record[Col.DSMIGINDATE.value] = Context().timestamp
-            record[Col.DSMIGINDURATION.value] = str(elapsed_time)
-
-            # Processing the result of the migration
-            if rc == 0:
-                record[Col.DSMIGIN.value] = 'SUCCESS'
-            else:
-                record[Col.DSMIGIN.value] = 'FAILED'
-            Log().logger.info('MIGRATION ' + record[Col.DSMIGIN.value] + ' (' +
-                              str(round(elapsed_time, 4)) + ' s)')
-            print('')
-
-            Context().records[i].columns = record
+        rc = self._migrate(record)
+        if rc == 0:
             self._storage_resource.write()
+            self._number_migrated += 1
+            Log().logger.info('[migration] Current dataset migration count: ' +
+                              str(self._number_migrated))
 
         self._clear_conversion_directory()
+        Log().logger.debug('[migration] Ending Job')
 
         return rc
-
-    # def run(self):
-    #     """Perform all the steps to migrate datasets in OpenFrame using dsmigin and update the CSV file.
-
-    #     It first creates a backup of the CSV file and loads it. Then, it executes the dsmigin command to migrate datasets and updating the DSMIGIN status (success or fail) at the same time. It finally writes the changes to the CSV, and updates the statistics.
-
-    #     Returns:
-    #         An integer, the return code of the job.
-    #     """
-    #     dsmigin = DSMIGINHandler()
-
-    #     rc = dsmigin.run()
-    #     if rc != 0:
-    #         return rc
-
-    #     return rc
