@@ -71,107 +71,85 @@ class MigrationJob(Job):
                 An integer, the return code of the method."""
         rc = 0
         unset_list = ('', ' ', None)
-        root_skipping_message = '[migration] Skipping dataset: ' + record[
+        skip_message = '[migration] Skipping dataset: ' + record[
             Col.DSN.value] + ': '
 
+        if record[Col.IGNORE.value] == 'Y':
+            Log().logger.info(skip_message + 'IGNORE set to "Y"')
+            rc = 1
+        elif record[Col.FTPDATE.value] == '':
+            Log().logger.debug(skip_message + 'FTPDATE not set')
+            rc = 1
+        elif record[Col.DSMIGIN.value] == 'N':
+            Log().logger.debug(skip_message + 'DSMIGIN set to "N"')
+            rc = 1
+        elif record[Col.DSMIGIN.value] in ('', 'Y', 'F'):
+            Log().logger.debug('[migration] DSMIGIN set to "' +
+                               record[Col.DSMIGIN.value] + '"')
+            rc = 0
+
         # # Dataset organization considerations - missing information for successful migration
-        if record[Col.DSORG.value] == 'PO' or record[Col.DSORG.value] == 'PS':
-            if record[Col.COPYBOOK.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing COPYBOOK information for the given dataset')
-                rc = 1
-            if record[Col.LRECL.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing record length LRECL information for the given dataset'
-                )
-                rc = 1
-            if record[Col.BLKSIZE.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing block size BLKSIZE information for the given dataset'
-                )
-                rc = 1
-            if record[Col.RECFM.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing record format RECFM information for the given dataset'
-                )
-                rc = 1
-
-        elif record[Col.DSORG.value] == 'VSAM':
-            if Context().prefix == '':
-                Log().logger.warning(
-                    root_skipping_message +
-                    'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
-                )
-                rc = 1
-            if record[Col.COPYBOOK.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing COPYBOOK information for the given dataset')
-                rc = 1
-            if record[Col.RECFM.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing record format RECFM information for the given dataset'
-                )
-                rc = 1
-            if record[Col.VSAM.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing VSAM information for the given dataset')
-                rc = 1
-            if record[Col.KEYOFF.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing KEYOFF information for the given dataset')
-                rc = 1
-            if record[Col.KEYLEN.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing KEYLEN information for the given dataset')
-                rc = 1
-            if record[Col.MAXLRECL.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing MAXLRECL information for the given dataset')
-                rc = 1
-            if record[Col.AVGLRECL.value] in unset_list:
-                Log().logger.warning(
-                    root_skipping_message +
-                    'Missing AVGLRECL information for the given dataset')
-                rc = 1
-
-        elif record[Col.DSORG.value] in unset_list:
-            Log().logger.warning(
-                root_skipping_message +
-                'Missing DSORG information for the given dataset')
-            rc = 1
-
-        else:
-            Log().logger.error(
-                root_skipping_message +
-                'Invalid DSORG information for the given dataset')
-            rc = 1
-
-        # Evaluating potential reasons of skipping if dataset consideration are ok
         if rc == 0:
-            if record[Col.IGNORE.value] == 'Y':
-                Log().logger.info(root_skipping_message + 'IGNORE set to "Y"')
+            if record[Col.DSORG.value] == 'PO' or record[
+                    Col.DSORG.value] == 'PS':
+                if record[Col.COPYBOOK.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing COPYBOOK parameter')
+                    rc = 1
+                if record[Col.LRECL.value] in unset_list:
+                    Log().logger.warning(
+                        skip_message + 'Missing record length LRECL parameter')
+                    rc = 1
+                if record[Col.BLKSIZE.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing block size BLKSIZE parameter')
+                    rc = 1
+                if record[Col.RECFM.value] in unset_list:
+                    Log().logger.warning(
+                        skip_message + 'Missing record format RECFM parameter')
+                    rc = 1
+
+            elif record[Col.DSORG.value] == 'VSAM':
+                if record[Col.COPYBOOK.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing COPYBOOK parameter')
+                    rc = 1
+                if record[Col.RECFM.value] in unset_list:
+                    Log().logger.warning(
+                        skip_message + 'Missing record format RECFM parameter')
+                    rc = 1
+                if record[Col.VSAM.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing VSAM parameter')
+                    rc = 1
+                if record[Col.KEYOFF.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing KEYOFF parameter')
+                    rc = 1
+                if record[Col.KEYLEN.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing KEYLEN parameter')
+                    rc = 1
+                if record[Col.MAXLRECL.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing MAXLRECL parameter')
+                    rc = 1
+                if record[Col.AVGLRECL.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing AVGLRECL parameter')
+                    rc = 1
+
+            elif record[Col.DSORG.value] in unset_list:
+                Log().logger.warning(skip_message + 'Missing DSORG parameter')
                 rc = 1
-            elif record[Col.DSMIGIN.value] == 'N':
-                Log().logger.debug(root_skipping_message +
-                                   'Dataset already successfully migrated')
+
+            else:
+                Log().logger.error(skip_message + 'Invalid DSORG parameter')
                 rc = 1
-            elif record[Col.DSMIGIN.value] in ('', 'Y', 'F'):
-                Log().logger.debug('')
-                rc = 0
-            elif record[Col.FTP.value] == 'F':
-                Log().logger.info(root_skipping_message +
-                                  'FTP set to "F", failed download')
-                rc = 1
+
+        if rc == 0:
+            Log().logger.debug('[migration] Proceeding: Dataset eligible: ' +
+                               record[Col.DSN.value])
 
         return rc
 
@@ -483,9 +461,6 @@ class MigrationJob(Job):
         rc = self._migrate(record)
         if rc == 0:
             self._storage_resource.write()
-            self._number_migrated += 1
-            Log().logger.info('[migration] Current dataset migration count: ' +
-                              str(self._number_migrated))
 
         self._clear_conversion_directory()
         Log().logger.debug('[migration] Ending Job')

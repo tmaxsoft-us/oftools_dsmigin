@@ -48,85 +48,62 @@ class FTPJob(Job):
             Returns:
                 An integer, the return code of the method."""
         unset_list = ('', ' ', None)
-        root_skipping_message = '[ftp] Skipping dataset: ' + record[
-            Col.DSN.value] + ': '
+        skip_message = '[ftp] Skipping dataset: ' + record[Col.DSN.value] + ': '
 
-        # Dataset organization considerations
-        if record[Col.DSORG.value] in ('PS', 'PO'):
+        if record[Col.IGNORE.value] == 'Y':
+            Log().logger.info(skip_message + 'IGNORE set to "Y"')
+            rc = 1
+        elif record[Col.LISTCATDATE.value] == '':
+            Log().logger.debug(skip_message + 'LISTCATDATE not set')
+            rc = 1
+        elif record[Col.FTP.value] == 'N':
+            Log().logger.debug(skip_message + 'FTP set to "N"')
+            rc = 1
+        elif record[Col.FTP.value] in ('', 'Y', 'F'):
+            Log().logger.debug('[ftp] FTP set to "' + record[Col.FTP.value] +
+                               '"')
             rc = 0
 
-            # Evaluating potential reasons of skipping
-            if record[Col.IGNORE.value] == 'Y':
-                Log().logger.info(root_skipping_message + 'IGNORE set to "Y"')
-                rc = 1
-            elif record[Col.FTP.value] == 'N':
-                Log().logger.info(root_skipping_message +
-                                  'Dataset already successfully downloaded')
-                rc = 1
-            elif record[Col.FTP.value] in ('', 'Y', 'F'):
-                Log().logger.info('')
-                rc = 0
-            elif record[Col.VOLSER.value] == 'Pseudo':
-                Log().logger.info(root_skipping_message +
+        if rc == 0:
+            if record[Col.VOLSER.value] == 'Pseudo':
+                Log().logger.info(skip_message +
                                   'VOLSER set to "Pseudo" directory')
                 rc = 1
             elif record[Col.VOLSER.value] == 'Migrated':
-                Log().logger.info(
-                    'VOLSER set to "Migrated" directory. Recalling dataset: ' +
-                    record[Col.DSN.value])
-                rc = 2
-
-            if rc in (0, 2):
-                Log().logger.debug('[ftp] DSORG set to "' +
-                                   record[Col.DSORG.value] +
-                                   '". Proceeding to download')
-
-        elif record[Col.DSORG.value] == 'VSAM':
-            if Context().prefix == '':
-                Log().logger.warning(
-                    root_skipping_message +
-                    'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
-                )
+                Log().logger.info(skip_message + 'VOLSER set to "Migrated"')
                 rc = 1
+
+        if rc == 0:
+            if record[Col.DSORG.value] == 'VSAM':
+                if Context().prefix != '':
+                    Log().logger.debug(
+                        '[ftp] Prefix correctly specified for VSAM dataset download'
+                    )
+                    rc = 0
+                else:
+                    Log().logger.warning(
+                        skip_message +
+                        'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
+                    )
+                    rc = 1
+
+            elif record[Col.DSORG.value] in unset_list:
+                Log().logger.warning(skip_message + 'Missing DSORG parameter')
+                rc = 1
+
             else:
-                Log().logger.debug('[ftp] DSORG set to "' +
-                                   record[Col.DSORG.value] +
-                                   '". Proceeding to download')
-                rc = 0
+                Log().logger.error(skip_message + 'Invalid DSORG parameter')
+                rc = 1
 
-        elif record[Col.DSORG.value] in unset_list:
-            Log().logger.warning(
-                root_skipping_message +
-                'Missing DSORG information for the given dataset')
-            rc = 1
-
-        else:
-            Log().logger.error(
-                root_skipping_message +
-                'Invalid DSORG information for the given dataset')
-            rc = 1
-
-        return rc
-
-    def _recall(self, record):
-        """Executes FTP command to make dataset available to download.
-
-            If a dataset has 'Migrated' as VOLSER parameter, the program executes this recall method just to open the diretory containing the dataset to trigger download execution from the mainframe.
-
-            Args:
-                record: A list, the dataset data to execute the recall using the DSN.
-
-            Returns:
-                An integer, the return code of the method."""
-        ftp_command = 'cd ' + record[Col.DSN.value] + '\nquit\n'
-        _, _, rc = Utils().execute_ftp_command(ftp_command)
+        if rc == 0:
+            Log().logger.debug('[ftp] Proceeding: Dataset eligible: ' +
+                               record[Col.DSN.value])
 
         return rc
 
     def _download_PS(self, dsn, rdwftp):
         """
             """
-        Log().logger.debug('[ftp] Downloading PS dataset: ' + dsn)
         ftp_command = rdwftp + '\nget ' + dsn + '\nquit\nEOF'
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
@@ -135,7 +112,6 @@ class FTPJob(Job):
     def _download_PO(self, dsn, rdwftp):
         """
             """
-        Log().logger.debug('[ftp] Downloading PO dataset: ' + dsn)
         # Creating the directory for the PO dataset
         if not os.path.exists(dsn):
             os.makedirs(dsn)
@@ -149,10 +125,9 @@ class FTPJob(Job):
     def _download_VSAM(self, dsn, rdwftp):
         """
             """
-        Log().logger.debug('[ftp] Downloading PS dataset: ' + dsn)
-        ftp_command = rdwftp + '\nget ' + Context().prefix + dsn + ' ' + dsn + '\nquit\nEOF'
+        ftp_command = rdwftp + '\nget ' + Context(
+        ).prefix + dsn + ' ' + dsn + '\nquit\nEOF'
         _, _, rc = Utils().execute_ftp_command(ftp_command)
-
 
         return rc
 
@@ -174,6 +149,7 @@ class FTPJob(Job):
 
         start_time = time.time()
 
+        Log().logger.info('[ftp] Downloading dataset: ' + record[Col.DSN.value])
         if record[Col.DSORG.value] == 'PS':
             rc = self._download_PS(record[Col.DSN.value], rdwftp)
         elif record[Col.DSORG.value] == 'PO':
@@ -213,24 +189,10 @@ class FTPJob(Job):
         rc = self._analyze(record)
         if rc == 1:
             return rc
-        elif rc == 2:
-            self._recall(record)
 
         rc = self._download(record)
         if rc == 0:
             self._storage_resource.write()
-            self._number_downloaded += 1
-
-            if Context().number_datasets != 0:
-                Log().logger.info('[ftp] Current dataset download count: ' +
-                                  str(self._number_downloaded) + '/' +
-                                  str(Context().number_datasets))
-                if self._number_downloaded >= Context().number_datasets:
-                    Log().logger.info('[ftp] Limit of dataset download reached')
-                    rc = 3
-            else:
-                Log().logger.info('[ftp] Current dataset download count: ' +
-                                  str(self._number_downloaded))
 
         Log().logger.debug('[ftp] Ending Job')
 

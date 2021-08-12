@@ -183,6 +183,8 @@ class Utils(object, metaclass=SingletonMeta):
                 stdout = proc.stdout.decode('latin_1')
                 stderr = proc.stderr.decode('latin_1')
                 return_code = proc.returncode
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt()
             except:
                 stdout = None
                 stderr = None

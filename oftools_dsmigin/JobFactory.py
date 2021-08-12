@@ -4,8 +4,7 @@
 
     Typical usage example:
       job_factory = JobFactory()
-      job_factory.create('update')
-"""
+      job_factory.create('update')"""
 
 # Generic/Built-in modules
 
@@ -23,11 +22,11 @@ class JobFactory(object):
         This class is the core of the Factory design pattern.
 
         Attributes:
-            _storage_resource: A storage resource object, the object where the program read and write the data.   It could be a CSV file or a database table.
+            _storage_resource {Storage Resource object} -- Object where the program read and write the data. It could be a CSV file or a database table.
 
         Methods:
-            __init__(storage_resource): Initializes the class with the _storage_resource attribute.
-            create(input): Creates the job according to the input parameter."""
+            __init__(storage_resource) -- Initializes the class with the _storage_resource attribute.
+            create(input) -- Creates the job according to the input parameter."""
 
     def __init__(self, storage_resource):
         """Initializes the class with the _storage_resource attribute.
@@ -38,10 +37,10 @@ class JobFactory(object):
         """Creates the job according to the input parameter.
 
             Args:
-                job_name: A string, the name of the job.
+                job_name {string} -- Name of the job.
 
             Returns:
-                A Job object, the appropriate one depending on the input."""
+                Job object -- Appropriate job depending on the input."""
         if job_name == 'ftp':
             return FTPJob(self._storage_resource)
         elif job_name == 'listcat':

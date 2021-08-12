@@ -205,6 +205,7 @@ class Main(object):
             Log().logger.warning(
                 'Warning: Missing -i, --ip-address: Listcat will skip dataset info retrieval from Mainframe and focus only on VSAM dataset info from listcat file'
             )
+            sys.exit(-1)
 
         if args.ftp:
             try:
@@ -286,7 +287,6 @@ class Main(object):
                 jobs.append(job)
             if args.ftp:
                 Context().ip_address = args.ip_address
-                Context().number_datasets = args.number
                 Context().prefix = args.prefix
                 job = job_factory.create('ftp')
                 jobs.append(job)
@@ -320,7 +320,9 @@ class Main(object):
 
         # Variables initialization for program execution
         rc = 0
+        number_dataset = 0
         Context().tag = args.tag
+        Context().number_datasets = args.number
         Context().working_directory = args.working_directory
 
         # Initialize log file
@@ -330,32 +332,46 @@ class Main(object):
         Log().open_file(log_file_path)
 
         # CSV file initialization
-        csv = CSV(args.csv)
+        storage_resource = CSV(args.csv)
 
         # statistics = Statistics()
 
         # Create jobs
-        jobs = self._create_jobs(args, csv)
+        jobs = self._create_jobs(args, storage_resource)
 
-        for i in range(len(Context().records)):
-            record = Context().records[i].columns
+        try:
+            for i in range(len(Context().records)):
+                record = Context().records[i].columns
 
-            # Run jobs
-            for job in jobs:
-                rc = job.run(record)
-                if rc != 0:
-                    # Skipping dataset
-                    if rc in (1, 2):
-                        continue
-                    # Download limit reached
-                    elif rc == 3:
-                        Log().logger.info(
-                            'Terminating program execution')
-                        break
+                # Run jobs
+                for job in jobs:
+                    rc = job.run(record)
+                    if rc != 0:
+                        # Skipping dataset
+                        if rc == 1:
+                            continue
+                        else:
+                            Log().logger.error(
+                                'An error occurred. Aborting program execution')
+                            break
+
+                if rc == 0:
+                    number_dataset += 1
+
+                    if Context().number_datasets != 0:
+                        Log().logger.info('Current dataset count: ' +
+                                        str(number_dataset) + '/' +
+                                        str(Context().number_datasets))
+                        if number_dataset >= Context().number_datasets:
+                            Log().logger.info('Limit of dataset reached')
+                            Log().logger.info('Terminating program execution')
+                            break
                     else:
-                        Log().logger.error(
-                            'An error occurred. Aborting program execution')
-                        break
+                        Log().logger.info('Current dataset count: ' +
+                                        str(number_dataset))
+        except KeyboardInterrupt:
+            storage_resource.write()
+            raise KeyboardInterrupt()
 
         # rc = statistics.run()
         # if rc < 0:
