@@ -74,7 +74,9 @@ class FTPJob(Job):
                 rc = 1
 
         if rc == 0:
-            if record[Col.DSORG.value] == 'VSAM':
+            if record[Col.DSORG.value] == 'PO' or record[Col.DSORG.value] == 'PS':
+                rc = 0
+            elif record[Col.DSORG.value] == 'VSAM':
                 if Context().prefix != '':
                     Log().logger.debug(
                         '[ftp] Prefix correctly specified for VSAM dataset download'
