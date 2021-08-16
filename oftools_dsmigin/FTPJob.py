@@ -144,10 +144,11 @@ class FTPJob(Job):
 
         # quote is an FTP option and RDW is dataset length for the given dataset
         # This conditional statement allow to retrieve record length for V (Variable) or VB (Variable Blocked) for successful download
-        if record[Col.RECFM.value][0] == 'V':
-            rdwftp = 'quote site rdw\n'
-        else:
-            rdwftp = ''
+        if record[Col.RECFM.value] != '':
+            if record[Col.RECFM.value][0] == 'V':
+                rdwftp = 'quote site rdw\n'
+            else:
+                rdwftp = ''
 
         start_time = time.time()
 
