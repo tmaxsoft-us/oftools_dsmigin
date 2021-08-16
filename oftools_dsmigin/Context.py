@@ -58,6 +58,8 @@ class Context(object, metaclass=SingletonMeta):
         """Initializes all attributes of the context.
             """
         # Input parameters - different jobs
+        self._initialization = False
+
         self._ip_address = ''
         self._number_datasets = 0
         self._prefix = ''
@@ -79,9 +81,22 @@ class Context(object, metaclass=SingletonMeta):
 
         # Other
         self._tag = ''
-        self._full_timestamp = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
+        self._full_timestamp = datetime.datetime.today().strftime(
+            '%Y%m%d_%H%M%S')
         self._timestamp = datetime.datetime.today().strftime('%Y-%m-%d')
         self._init_pwd = os.getcwd()
+
+    @property
+    def initialization(self):
+        """Getter method for the attribute _initialization.
+            """
+        return self._initialization
+
+    @initialization.setter
+    def initialization(self, initialization):
+        """Setter method for the attribute _initialization.
+            """
+        self._initialization = initialization
 
     @property
     def ip_address(self):
@@ -196,27 +211,34 @@ class Context(object, metaclass=SingletonMeta):
             Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
         working_directory = os.path.expandvars(working_directory)
         self._working_directory = os.path.abspath(working_directory)
-        rc = Utils().create_directory(self._working_directory)
-        if rc != 0:
-            return rc
 
         self._conversion_directory = self._working_directory + '/conversion'
-        Utils().create_directory(self._conversion_directory)
-
         self._copybook_directory = self._working_directory + '/copybooks'
-        Utils().create_directory(self._copybook_directory)
-
         self._csv_backup_directory = self._working_directory + '/csv_backups'
-        Utils().create_directory(self._csv_backup_directory)
-
         self._dataset_directory = self._working_directory + '/datasets'
-        Utils().create_directory(self._dataset_directory)
-
         self._listcat_directory = self._working_directory + '/listcat'
-        Utils().create_directory(self._listcat_directory)
-
         self._log_directory = self._working_directory + '/log'
-        Utils().create_directory(self._log_directory)
+
+        if self._initialization:
+            rc = Utils().create_directory(self._working_directory)
+            if rc != 0:
+                return rc
+
+            Utils().create_directory(self._conversion_directory)
+            Utils().create_directory(self._copybook_directory)
+            Utils().create_directory(self._csv_backup_directory)
+            Utils().create_directory(self._dataset_directory)
+            Utils().create_directory(self._listcat_directory)
+            Utils().create_directory(self._log_directory)
+
+        try:
+            if os.path.isdir(self._working_directory) is False:
+                raise FileNotFoundError()
+        except FileNotFoundError:
+            Log().logger.error(
+                'FileNotFoundError: No such file or directory: ' +
+                working_directory)
+            sys.exit(-1)
 
     @property
     def records(self):
@@ -236,6 +258,7 @@ class Context(object, metaclass=SingletonMeta):
             """
         if tag is not None:
             self._tag = '_' + tag
+
     @property
     def full_timestamp(self):
         """Getter method for the attribute _full_timestamp.

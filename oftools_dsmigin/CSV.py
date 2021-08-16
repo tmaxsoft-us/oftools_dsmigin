@@ -83,13 +83,16 @@ class CSV(object):
                             Context().records.append(record)
 
             else:
-                raise FileNotFoundError()
+                if Context().initialization:
+                    Log().logger.info('[csv] Initializing file from template')
+                    self.write()
+                else:
+                    raise FileNotFoundError()
 
         except FileNotFoundError:
             Log().logger.info('FileNotFoundError: No such file or directory: ' +
                               self._file_path)
-            Log().logger.info('Creating CSV file from template')
-            self.write()
+            sys.exit(-1)
 
         finally:
             return rc

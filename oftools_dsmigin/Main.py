@@ -123,6 +123,13 @@ class Main(object):
             type=str)
 
         optional.add_argument(
+            '--init',
+            action='store_true',
+            dest='init',
+            help='Initializes the CSV file and the working directory specified',
+            required=False)
+
+        optional.add_argument(
             '-L',
             '--log-level',
             action='store',
@@ -205,17 +212,15 @@ class Main(object):
             Log().logger.warning(
                 'Warning: Missing -i, --ip-address: Listcat will skip dataset info retrieval from Mainframe and focus only on VSAM dataset info from listcat file'
             )
-            sys.exit(-1)
 
-        if args.ftp:
-            try:
-                if args.ip_address is None:
-                    raise SystemError()
-            except SystemError:
-                Log().logger.critical(
-                    'MissingArgumentError: -i, --ip-address option must be specified for dataset download from Mainframe'
-                )
-                sys.exit(-1)
+        try:
+            if args.ftp and args.ip_address is None:
+                raise SystemError()
+        except SystemError:
+            Log().logger.critical(
+                'MissingArgumentError: -i, --ip-address option must be specified for dataset download from Mainframe'
+            )
+            sys.exit(-1)
 
         # Analyze if the argument ip_address respect a valid format
         if args.ip_address:
@@ -322,6 +327,7 @@ class Main(object):
         rc = 0
         number_dataset = 0
         Context().tag = args.tag
+        Context().initialization = args.init
         Context().number_datasets = args.number
         Context().working_directory = args.working_directory
 
@@ -360,15 +366,15 @@ class Main(object):
 
                     if Context().number_datasets != 0:
                         Log().logger.info('Current dataset count: ' +
-                                        str(number_dataset) + '/' +
-                                        str(Context().number_datasets))
+                                          str(number_dataset) + '/' +
+                                          str(Context().number_datasets))
                         if number_dataset >= Context().number_datasets:
                             Log().logger.info('Limit of dataset reached')
                             Log().logger.info('Terminating program execution')
                             break
                     else:
                         Log().logger.info('Current dataset count: ' +
-                                        str(number_dataset))
+                                          str(number_dataset))
         except KeyboardInterrupt:
             storage_resource.write()
             raise KeyboardInterrupt()

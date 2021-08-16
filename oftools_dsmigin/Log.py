@@ -112,13 +112,16 @@ class Log(object, metaclass=SingletonType):
     def open_file(self, file_path):
         """Opens the file handler to write log messages to the log file.
             """
-        if self._file_handler is None:
-            self._file_handler = logging.FileHandler(filename=file_path,
-                                                     mode='a',
-                                                     encoding='utf-8')
-            self._file_handler.setFormatter(self._formatter)
-            self._logger.addHandler(self._file_handler)
-
+        try:
+            if self._file_handler is None:
+                self._file_handler = logging.FileHandler(filename=file_path,
+                                                        mode='a',
+                                                        encoding='utf-8')
+                self._file_handler.setFormatter(self._formatter)
+                self._logger.addHandler(self._file_handler)
+        except FileNotFoundError:
+            pass
+        
     def close_file(self):
         """Closes the file handler at the end of each file processing.
             """
