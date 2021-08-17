@@ -108,7 +108,7 @@ class CSV(object):
         backup_file_name = self._root_file_name + Context().tag + '_' + Context(
         ).full_timestamp + '.csv'
         backup_file_path = Context(
-        ).csv_backup_directory + '/' + backup_file_name
+        ).csv_backups_directory + '/' + backup_file_name
 
         rc = Utils().copy_file(self._file_path, backup_file_path)
 

@@ -47,7 +47,11 @@ class FTPJob(Job):
             
             Returns:
                 An integer, the return code of the method."""
-        unset_list = ('', ' ', None)
+        Log().logger.debug('[ftp] Assessing dataset eligibility: ' +
+                           record[Col.DSN.value])
+        rc = 0
+
+        unset_list = ('', ' ')
         skip_message = '[ftp] Skipping dataset: ' + record[Col.DSN.value] + ': '
 
         if record[Col.IGNORE.value] == 'Y':
@@ -66,15 +70,15 @@ class FTPJob(Job):
 
         if rc == 0:
             if record[Col.VOLSER.value] == 'Pseudo':
-                Log().logger.info(skip_message +
-                                  'VOLSER set to "Pseudo" directory')
+                Log().logger.info(skip_message + 'VOLSER set to "Pseudo"')
                 rc = 1
             elif record[Col.VOLSER.value] == 'Migrated':
                 Log().logger.info(skip_message + 'VOLSER set to "Migrated"')
                 rc = 1
 
         if rc == 0:
-            if record[Col.DSORG.value] == 'PO' or record[Col.DSORG.value] == 'PS':
+            if record[Col.DSORG.value] == 'PO' or record[
+                    Col.DSORG.value] == 'PS':
                 rc = 0
             elif record[Col.DSORG.value] == 'VSAM':
                 if Context().prefix != '':
@@ -106,7 +110,7 @@ class FTPJob(Job):
     def _download_PS(self, dsn, rdwftp):
         """
             """
-        ftp_command = rdwftp + '\nget ' + dsn + '\nquit\nEOF'
+        ftp_command = rdwftp + '\nget ' + dsn
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
         return rc
@@ -118,17 +122,16 @@ class FTPJob(Job):
         if not os.path.exists(dsn):
             os.makedirs(dsn)
         os.chdir(dsn)
-        ftp_command = rdwftp + '\ncd ' + dsn + '\nmget -c *\nquit\nEOF\n'
+        ftp_command = rdwftp + '\ncd ' + dsn + '\nmget -c *'
         _, _, rc = Utils().execute_ftp_command(ftp_command)
-        os.chdir(Context().dataset_directory)
+        os.chdir(Context().datasets_directory)
 
         return rc
 
     def _download_VSAM(self, dsn, rdwftp):
         """
             """
-        ftp_command = rdwftp + '\nget ' + Context(
-        ).prefix + dsn + ' ' + dsn + '\nquit\nEOF'
+        ftp_command = rdwftp + '\nget ' + Context().prefix + dsn + ' ' + dsn
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
         return rc
@@ -144,11 +147,10 @@ class FTPJob(Job):
 
         # quote is an FTP option and RDW is dataset length for the given dataset
         # This conditional statement allow to retrieve record length for V (Variable) or VB (Variable Blocked) for successful download
-        if record[Col.RECFM.value] != '':
-            if record[Col.RECFM.value][0] == 'V':
-                rdwftp = 'quote site rdw\n'
-            else:
-                rdwftp = ''
+        if record[Col.RECFM.value] != '' and record[Col.RECFM.value][0] == 'V':
+            rdwftp = 'quote site rdw\n'
+        else:
+            rdwftp = ''
 
         start_time = time.time()
 
@@ -185,14 +187,15 @@ class FTPJob(Job):
             Returns: 
                 An integer, the return code of the job."""
         Log().logger.debug('[ftp] Starting Job')
-        os.chdir(Context().dataset_directory)
+        os.chdir(Context().datasets_directory)
         rc = 0
 
         # Skipping dataset download under specific conditions
         rc = self._analyze(record)
-        if rc == 1:
+        if rc != 1:
             return rc
 
+        # Downloading dataset from Mainframe using FTP
         rc = self._download(record)
         if rc == 0:
             self._storage_resource.write()

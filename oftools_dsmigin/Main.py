@@ -196,9 +196,10 @@ class Main(object):
 
         # Analyze CSV file, making sure a file with .csv extension is specified
         try:
-            status = Utils().check_file_extension(args.csv, 'csv')
-            if status is False:
-                raise TypeError()
+            if args.csv:
+                status = Utils().check_file_extension(args.csv, 'csv')
+                if status is False:
+                    raise TypeError()
         except TypeError:
             Log().logger.critical(
                 'TypeError: Invalid -c, --csv option: Expected .csv extension')
@@ -210,7 +211,7 @@ class Main(object):
                 raise Warning()
         except Warning:
             Log().logger.warning(
-                'Warning: Missing -i, --ip-address: Listcat will skip dataset info retrieval from Mainframe and focus only on VSAM dataset info from listcat file'
+                '[listcat] Missing -i, --ip-address: Skipping dataset info retrieval from Mainframe'
             )
 
         try:
@@ -222,18 +223,6 @@ class Main(object):
             )
             sys.exit(-1)
 
-        # Analyze if the argument ip_address respect a valid format
-        if args.ip_address:
-            try:
-                status = Utils().analyze_ip_address(args.ip_address)
-                if status is False:
-                    raise SystemError()
-            except SystemError:
-                Log().logger.critical(
-                    'FormatError: Invalid -i, --ip-address option: Must respect either IPv4 or IPv6 standard format'
-                )
-                sys.exit(-1)
-
         # Analyze if the argument number is positive
         if args.number:
             try:
@@ -243,30 +232,6 @@ class Main(object):
                 Log().logger.critical(
                     'SignError: Invalid -n, --number option: Must be positive')
                 sys.exit(-1)
-
-        #TODO listcat file is going to have a fixed name, like listcat.txt. MAke sure this file exist before proceeding
-        # Analyze if listcat has been properly specified
-        #NO EXTENSION
-        # if args.listcat:
-        #     try:
-        #         listcat_path = os.path.expandvars(args.listcat)
-        #         if os.path.isdir(listcat_path):
-        #             Log().logger.debug('Listcat directory specified.')
-        #         else:
-        #             Log().logger.debug('Listcat file specified.')
-        #             extension = listcat_path.rsplit('.', 1)[1]
-        #             if extension != 'txt':
-        #                 raise TypeError()
-        #     except IndexError:
-        #         Log().logger.critical(
-        #             'IndexError: Given Listcat file does not have a .txt extension: '
-        #             + listcat_path)
-        #         sys.exit(-1)
-        #     except TypeError:
-        #         Log().logger.critical(
-        #             'TypeError: Expected .txt extension, found ' + extension +
-        #             ': ' + listcat_path)
-        #         sys.exit(-1)
 
         return args
 
@@ -288,6 +253,7 @@ class Main(object):
         try:
             if args.listcat:
                 Context().ip_address = args.ip_address
+                Context().set_listcat()
                 job = job_factory.create('listcat')
                 jobs.append(job)
             if args.ftp:
@@ -325,10 +291,10 @@ class Main(object):
 
         # Variables initialization for program execution
         rc = 0
-        number_dataset = 0
-        Context().tag = args.tag
+        count_dataset = 0
         Context().initialization = args.init
-        Context().number_datasets = args.number
+        Context().max_datasets = args.number
+        Context().tag = args.tag
         Context().working_directory = args.working_directory
 
         # Initialize log file
@@ -339,8 +305,6 @@ class Main(object):
 
         # CSV file initialization
         storage_resource = CSV(args.csv)
-
-        # statistics = Statistics()
 
         # Create jobs
         jobs = self._create_jobs(args, storage_resource)
@@ -362,19 +326,19 @@ class Main(object):
                             break
 
                 if rc == 0:
-                    number_dataset += 1
+                    count_dataset += 1
 
-                    if Context().number_datasets != 0:
+                    if Context().max_datasets != 0:
                         Log().logger.info('Current dataset count: ' +
-                                          str(number_dataset) + '/' +
-                                          str(Context().number_datasets))
-                        if number_dataset >= Context().number_datasets:
+                                          str(count_dataset) + '/' +
+                                          str(Context().max_datasets))
+                        if count_dataset >= Context().max_datasets:
                             Log().logger.info('Limit of dataset reached')
                             Log().logger.info('Terminating program execution')
                             break
                     else:
                         Log().logger.info('Current dataset count: ' +
-                                          str(number_dataset))
+                                          str(count_dataset))
         except KeyboardInterrupt:
             storage_resource.write()
             raise KeyboardInterrupt()

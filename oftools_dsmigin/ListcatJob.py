@@ -15,7 +15,6 @@
 from .MigrationEnum import Col
 from .Context import Context
 from .Job import Job
-from .Listcat import Listcat
 from .Log import Log
 from .Utils import Utils
 
@@ -81,7 +80,7 @@ class ListcatJob(Job):
                 An integer, the return code of the method."""
         Log().logger.info('[listcat] Recalling migrated dataset:' +
                           record[Col.DSN.value])
-        ftp_command = 'cd ' + record[Col.DSN.value] + '\nquit\n'
+        ftp_command = 'cd ' + record[Col.DSN.value]
         Log().logger.debug('[listcat] ' + ftp_command)
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
@@ -100,7 +99,7 @@ class ListcatJob(Job):
         Log().logger.info('[listcat] Retrieving dataset info from Mainframe: ' +
                           record[Col.DSN.value])
 
-        ftp_command = 'ls ' + record[Col.DSN.value] + '\nquit\nEOF'
+        ftp_command = 'ls ' + record[Col.DSN.value]
         Log().logger.debug('[listcat] ' + ftp_command)
         stdout, _, rc = Utils().execute_ftp_command(ftp_command)
 
@@ -113,18 +112,18 @@ class ListcatJob(Job):
                 Log().logger.info('[listcat] Dataset marked as "Migrated"')
                 self._recall(record)
                 Log().logger.debug(
-                    '[listcat] Running the ftp command once again')
+                    '[listcat] Running the ftp ls command once again')
                 stdout, _, rc = Utils().execute_ftp_command(ftp_command)
                 if rc == 0:
                     line = stdout.splitlines()
                     fields = line[1].split()
                 else:
-                    Log().logger.info('[listcat] Dataset info retrieval failed')
+                    status = 'FAILED'
+                    Log().logger.info('LISTCAT MAINFRAME ' + status)
                     return rc
 
             if fields[0] == 'VSAM':
                 record[Col.DSORG.value] = fields[0]
-                Log().logger.info('[listcat] Dataset info retrieval successful')
 
             if len(fields) > 7:
                 record[Col.RECFM.value] = fields[-5]
@@ -132,9 +131,12 @@ class ListcatJob(Job):
                 record[Col.BLKSIZE.value] = fields[-3]
                 record[Col.DSORG.value] = fields[-2]
                 record[Col.VOLSER.value] = fields[0]
-                Log().logger.info('[listcat] Dataset info retrieval successful')
+
+            status = 'SUCCESS'
         else:
-            Log().logger.info('[listcat] Dataset info retrieval failed')
+            status = 'FAILED'
+
+        Log().logger.info('LISTCAT MAINFRAME ' + status)
 
         return rc
 
@@ -149,38 +151,39 @@ class ListcatJob(Job):
             Returns:  
                 integer -- Return code of the job."""
         Log().logger.debug('[listcat] Starting Job')
-        rc = 0
+        rc1, rc2 = 0, 0
 
-        # Skipping dataset info retrieval under specific conditions
+        # Skipping dataset listcat under specific conditions
         rc = self._analyze(record)
         if rc != 0:
             return rc
 
-        if Context().ip_address != '':
-            rc = self._get_dataset_info(record)
-            if rc != 0:
-                return rc
+        # Retrieve info from mainframe using FTP
+        if Context().ip_address != None:
+            rc1 = self._get_dataset_info(record)
 
-        if record[Col.DSORG.value] == 'VSAM':
-            #TODO one big listcat file named listcat.txt
-            listcat = Listcat(record)
-            rc = listcat.read()
-            if rc == 0:
-                rc = listcat.analyze()
-                # rc = listcat.update_dataset_record()
+        # Retrieving info from listcat file for VSAM datasets
+        if Context().listcat != None and record[Col.DSORG.value] == 'VSAM':
+            rc2 = Context().listcat.get_data(record)
+            # rc = listcat.update_dataset_record()
 
         # Processing the result of the listcat
-        if rc == 0:
+        if rc1 == 0 and rc2 == 0:
             status = 'SUCCESS'
             record[Col.LISTCATDATE.value] = Context().timestamp
             if record[Col.LISTCAT.value] != 'F':
                 record[Col.LISTCAT.value] = 'N'
-        elif rc != 0:
+            rc = 0
+        else:
             status = 'FAILED'
-
-        self._storage_resource.write()
+            if rc1 != 0:
+                rc = rc1
+            else:
+                rc = rc2
 
         Log().logger.info('LISTCAT ' + status)
+
+        self._storage_resource.write()
         Log().logger.debug('[listcat] Ending Job')
 
         return rc

@@ -69,8 +69,11 @@ class MigrationJob(Job):
 
             Returns:
                 An integer, the return code of the method."""
+        Log().logger.debug('[migration] Assessing dataset eligibility: ' +
+                           record[Col.DSN.value])
         rc = 0
-        unset_list = ('', ' ', None)
+
+        unset_list = ('', ' ')
         skip_message = '[migration] Skipping dataset: ' + record[
             Col.DSN.value] + ': '
 
@@ -88,13 +91,14 @@ class MigrationJob(Job):
                                record[Col.DSMIGIN.value] + '"')
             rc = 0
 
-        # # Dataset organization considerations - missing information for successful migration
+        # Dataset organization considerations - missing information for successful migration
         if rc == 0:
-            if record[Col.DSORG.value] == 'PO' or record[
-                    Col.DSORG.value] == 'PS':
+            if record[Col.DSORG.value] in ('PO', 'PS'):
                 if record[Col.COPYBOOK.value] in unset_list:
-                    Log().logger.warning(skip_message +
-                                         'Missing COPYBOOK parameter')
+                    Log().logger.warning(
+                        skip_message +
+                        'Missing COPYBOOK parameter: It needs to be manually entered'
+                    )
                     rc = 1
                 if record[Col.LRECL.value] in unset_list:
                     Log().logger.warning(
@@ -111,8 +115,10 @@ class MigrationJob(Job):
 
             elif record[Col.DSORG.value] == 'VSAM':
                 if record[Col.COPYBOOK.value] in unset_list:
-                    Log().logger.warning(skip_message +
-                                         'Missing COPYBOOK parameter')
+                    Log().logger.warning(
+                        skip_message +
+                        'Missing COPYBOOK parameter: It needs to be manually entered'
+                    )
                     rc = 1
                 if record[Col.RECFM.value] in unset_list:
                     Log().logger.warning(
@@ -147,6 +153,21 @@ class MigrationJob(Job):
                 Log().logger.error(skip_message + 'Invalid DSORG parameter')
                 rc = 1
 
+        # Copybook considerations - evaluating copybook extension
+        if rc == 0:
+            try:
+                status = Utils().check_file_extension(
+                    record[Col.COPYBOOK.value], 'cpy')
+                if status is True:
+                    rc = 0
+                else:
+                    raise TypeError()
+            except TypeError:
+                Log().logger.warning(
+                    skip_message +
+                    'Invalid COPYBOOK parameter: Expected .cpy extension')
+                rc = 1
+
         if rc == 0:
             Log().logger.debug('[migration] Proceeding: Dataset eligible: ' +
                                record[Col.DSN.value])
@@ -154,7 +175,7 @@ class MigrationJob(Job):
         return rc
 
     def _cobgensch(self, record):
-        """Generate the schema file from the COPYBOOK specified in the CSV file for the given dataset.
+        """Generate the schema file from the COPYBOOK specified in the storage resource for the given dataset.
 
             Args:
                 record: A list, the dataset data where to retrieve COPYBOOK location.
@@ -162,8 +183,8 @@ class MigrationJob(Job):
             Returns:
                 An integer, the return code of the method."""
         rc = 0
-        # COPYBOOK name needs to be manually entered in the CSV file and then this generation is performed for the migration
-        cobgensch_command = 'cobgensch ' + Context().copybook_directory
+
+        cobgensch_command = 'cobgensch ' + Context().copybooks_directory
         cobgensch_command += '/' + record[Col.COPYBOOK.value]
         cobgensch_command = Utils().format_command(cobgensch_command)
         _, _, rc = Utils().execute_shell_command(cobgensch_command)
@@ -178,7 +199,8 @@ class MigrationJob(Job):
 
             Returns:
                 An integer, the return code of the method."""
-        po_directory = Context().dataset_directory + '/' + record[Col.DSN.value]
+        po_directory = Context().datasets_directory + '/' + record[
+            Col.DSN.value]
         os.chdir(po_directory)
         rc = 0
 
@@ -269,7 +291,7 @@ class MigrationJob(Job):
                 if rc != 0:
                     break
 
-        os.chdir(Context().dataset_directory)
+        os.chdir(Context().datasets_directory)
 
         return rc
 
@@ -283,7 +305,6 @@ class MigrationJob(Job):
                 An integer, the return code of the method."""
         rc = 0
 
-        # ? Useless since we force migration by default?
         # dsdelete command
         src_file = record[Col.DSN.value]
         dsdelete_command = 'dsdelete ' + src_file
@@ -292,7 +313,7 @@ class MigrationJob(Job):
         _, _, rc = Utils().execute_shell_command(dsdelete_command)
 
         # dsmigin command
-        src_file = Context().dataset_directory + '/' + record[Col.DSN.value]
+        src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
         if Context().conversion:
             dst_file = Context().conversion_directory + '/' + record[
                 Col.DSN.value]
@@ -326,6 +347,8 @@ class MigrationJob(Job):
             Returns:
                 An integer, the return code of the method."""
         rc = 0
+        #TODO Review method and file_name / record[Col.DSN.value] usage
+        #TODO IF we use file_name, I need to check that prefix -p is specified when using -m option
         file_name = Context().prefix + record[Col.DSN.value]
 
         # dsmigin command
@@ -364,6 +387,7 @@ class MigrationJob(Job):
         options += ',' + record[Col.MAXLRECL.value]
         options += ' -k ' + record[Col.KEYLEN.value]
         options += ',' + record[Col.KEYOFF.value]
+        #? How do we generalize this below?
         options += ' -c SYS1.MASTER.ICFCAT'
         options += ' -t CL'
         options += ' -v DEFVOL'
@@ -413,7 +437,7 @@ class MigrationJob(Job):
 
         Log().logger.info('MIGRATION ' + status + ' (' +
                           str(round(elapsed_time, 4)) + ' s)')
-        print('')
+
         return rc
 
     def _clear_conversion_directory(self):
@@ -445,24 +469,25 @@ class MigrationJob(Job):
             Returns:
                 A 2D-list, dataset data after all the changes applied in the migration execution."""
         Log().logger.debug('[migration] Starting Job')
-        os.chdir(Context().dataset_directory)
+        os.chdir(Context().datasets_directory)
         rc = 0
 
         # Skipping dataset migration under specific conditions
         rc = self._analyze(record)
-        if rc == 1:
+        if rc != 0:
             return rc
 
+        # Generating schema file from copybook
         rc = self._cobgensch(record)
         if rc != 0:
             return rc
-            # Add a certain condition
 
+        # Migrating dataset using dsmigin utility
         rc = self._migrate(record)
         if rc == 0:
             self._storage_resource.write()
 
-        self._clear_conversion_directory()
+        # self._clear_conversion_directory()
         Log().logger.debug('[migration] Ending Job')
 
         return rc

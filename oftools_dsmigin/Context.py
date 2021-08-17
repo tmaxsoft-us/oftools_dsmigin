@@ -17,6 +17,7 @@ import sys
 # Third-party modules
 
 # Owned modules
+from .Listcat import Listcat
 from .Log import Log
 from .Utils import Utils
 
@@ -57,30 +58,33 @@ class Context(object, metaclass=SingletonMeta):
     def __init__(self):
         """Initializes all attributes of the context.
             """
-        # Input parameters - different jobs
+
+        # Required variables for program execution
         self._initialization = False
-
-        self._ip_address = ''
-        self._number_datasets = 0
-        self._prefix = ''
-
-        self._encoding_code = ''
-        self._conversion = False
+        self._max_datasets = 0
+        self._tag = ''
 
         # Directories
         self._conversion_directory = ''
         self._copybook_directory = ''
         self._csv_backup_directory = ''
-        self._dataset_directory = ''
+        self._datasets_directory = ''
         self._listcat_directory = ''
         self._log_directory = ''
         self._working_directory = ''
 
-        # CSV records data
+        # Storage resource records
         self._records = []
 
+        # Input parameters - different jobs
+        self._ip_address = None
+        self._listcat = None
+        self._prefix = ''
+
+        self._conversion = False
+        self._encoding_code = ''
+
         # Other
-        self._tag = ''
         self._full_timestamp = datetime.datetime.today().strftime(
             '%Y%m%d_%H%M%S')
         self._timestamp = datetime.datetime.today().strftime('%Y-%m-%d')
@@ -99,6 +103,110 @@ class Context(object, metaclass=SingletonMeta):
         self._initialization = initialization
 
     @property
+    def max_datasets(self):
+        """Getter method for the attribute _max_datasets.
+            """
+        return self._max_datasets
+
+    @max_datasets.setter
+    def max_datasets(self, max_datasets):
+        """Setter method for the attribute _max_datasets.
+            """
+        if max_datasets is not None:
+            self._max_datasets = max_datasets
+    
+    @property
+    def tag(self):
+        """Getter method for the attribute _tag.
+            """
+        return self._tag
+
+    @tag.setter
+    def tag(self, tag):
+        """Setter method for the attribute _tag.
+            """
+        if tag is not None:
+            self._tag = '_' + tag
+
+    @property
+    def conversion_directory(self):
+        """Getter method for the attribute _conversion_directory.
+            """
+        return self._conversion_directory
+
+    @property
+    def copybook_directory(self):
+        """Getter method for the attribute _copybook_directory.
+            """
+        return self._copybook_directory
+
+    @property
+    def csv_backup_directory(self):
+        """Getter method for the attribute _copybook_directory.
+            """
+        return self._csv_backup_directory
+
+    @property
+    def datasets_directory(self):
+        """Getter method for the attribute _datasets_directory.
+            """
+        return self._datasets_directory
+
+    @property
+    def listcat_directory(self):
+        """Getter method for the attribute _listcat_directory.
+            """
+        return self._listcat_directory
+
+    @property
+    def log_directory(self):
+        """Getter method for the attribute _log_directory.
+            """
+        return self._log_directory
+
+    @property
+    def working_directory(self):
+        """Getter method for the attribute _working_directory.
+            """
+        return self._working_directory
+
+    @working_directory.setter
+    def working_directory(self, working_directory):
+        """Setter method for the attribute _working_directory and all its subdirectories.
+
+            Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
+        working_directory = os.path.expandvars(working_directory)
+        self._working_directory = os.path.abspath(working_directory)
+
+        self._conversion_directory = self._working_directory + '/conversion'
+        self._copybooks_directory = self._working_directory + '/copybooks'
+        self._csv_backups_directory = self._working_directory + '/csv_backups'
+        self._datasets_directory = self._working_directory + '/datasets'
+        self._listcat_directory = self._working_directory + '/listcat'
+        self._log_directory = self._working_directory + '/log'
+
+        if self._initialization:
+            rc = Utils().create_directory(self._working_directory)
+            if rc != 0:
+                return rc
+
+            Utils().create_directory(self._conversion_directory)
+            Utils().create_directory(self._copybook_directory)
+            Utils().create_directory(self._csv_backup_directory)
+            Utils().create_directory(self._datasets_directory)
+            Utils().create_directory(self._listcat_directory)
+            Utils().create_directory(self._log_directory)
+
+        try:
+            if os.path.isdir(self._working_directory) is False:
+                raise FileNotFoundError()
+        except FileNotFoundError:
+            Log().logger.error(
+                'FileNotFoundError: No such file or directory: ' +
+                working_directory)
+            sys.exit(-1)
+
+    @property
     def ip_address(self):
         """Getter method for the attribute _ip_address.
             """
@@ -108,21 +216,35 @@ class Context(object, metaclass=SingletonMeta):
     def ip_address(self, ip_address):
         """Setter method for the attribute _ip_address.
             """
-        if ip_address is not None:
-            self._ip_address = ip_address
+        try:
+            if ip_address is not None:
+                # Analyze if the argument ip_address respect a valid format
+                status = Utils().analyze_ip_address(ip_address)
+                if status is True:
+                    self._ip_address = ip_address
+                else:
+                    raise SystemError()
+        except SystemError:
+            Log().logger.critical(
+                    'FormatError: Invalid -i, --ip-address option: Must respect either IPv4 or IPv6 standard format'
+                )
+            sys.exit(-1)
 
     @property
-    def number_datasets(self):
-        """Getter method for the attribute _number_datasets.
+    def listcat(self):
+        """Getter method for the attribute _listcat.
             """
-        return self._number_datasets
+        return self._listcat
 
-    @number_datasets.setter
-    def number_datasets(self, number):
-        """Setter method for the attribute _number_datasets.
+    def set_listcat(self):
+        """Setter method for the attribute _listcat.
             """
-        if number is not None:
-            self._number_datasets = number
+        self._listcat = Listcat()
+
+        rc = self._listcat.read()
+        if rc != 0:
+            Log().logger.warning('[listcat] Skipping listcat file data retrieval for VSAM datasets')
+            self.listcat = None
 
     @property
     def prefix(self):
@@ -163,101 +285,10 @@ class Context(object, metaclass=SingletonMeta):
         self._conversion = conversion
 
     @property
-    def conversion_directory(self):
-        """Getter method for the attribute _conversion_directory.
-            """
-        return self._conversion_directory
-
-    @property
-    def copybook_directory(self):
-        """Getter method for the attribute _copybook_directory.
-            """
-        return self._copybook_directory
-
-    @property
-    def csv_backup_directory(self):
-        """Getter method for the attribute _copybook_directory.
-            """
-        return self._csv_backup_directory
-
-    @property
-    def dataset_directory(self):
-        """Getter method for the attribute _dataset_directory.
-            """
-        return self._dataset_directory
-
-    @property
-    def listcat_directory(self):
-        """Getter method for the attribute _listcat_directory.
-            """
-        return self._listcat_directory
-
-    @property
-    def log_directory(self):
-        """Getter method for the attribute _log_directory.
-            """
-        return self._log_directory
-
-    @property
-    def working_directory(self):
-        """Getter method for the attribute _working_directory.
-            """
-        return self._working_directory
-
-    @working_directory.setter
-    def working_directory(self, working_directory):
-        """Setter method for the attribute _working_directory and all its subdirectories.
-
-            Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
-        working_directory = os.path.expandvars(working_directory)
-        self._working_directory = os.path.abspath(working_directory)
-
-        self._conversion_directory = self._working_directory + '/conversion'
-        self._copybook_directory = self._working_directory + '/copybooks'
-        self._csv_backup_directory = self._working_directory + '/csv_backups'
-        self._dataset_directory = self._working_directory + '/datasets'
-        self._listcat_directory = self._working_directory + '/listcat'
-        self._log_directory = self._working_directory + '/log'
-
-        if self._initialization:
-            rc = Utils().create_directory(self._working_directory)
-            if rc != 0:
-                return rc
-
-            Utils().create_directory(self._conversion_directory)
-            Utils().create_directory(self._copybook_directory)
-            Utils().create_directory(self._csv_backup_directory)
-            Utils().create_directory(self._dataset_directory)
-            Utils().create_directory(self._listcat_directory)
-            Utils().create_directory(self._log_directory)
-
-        try:
-            if os.path.isdir(self._working_directory) is False:
-                raise FileNotFoundError()
-        except FileNotFoundError:
-            Log().logger.error(
-                'FileNotFoundError: No such file or directory: ' +
-                working_directory)
-            sys.exit(-1)
-
-    @property
     def records(self):
         """Getter method for the attribute _records.
             """
         return self._records
-
-    @property
-    def tag(self):
-        """Getter method for the attribute _tag.
-            """
-        return self._tag
-
-    @tag.setter
-    def tag(self, tag):
-        """Setter method for the attribute _tag.
-            """
-        if tag is not None:
-            self._tag = '_' + tag
 
     @property
     def full_timestamp(self):

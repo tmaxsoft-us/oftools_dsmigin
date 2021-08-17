@@ -216,8 +216,10 @@ class Utils(object, metaclass=SingletonMeta):
         # ! By default, connection refused on port 22. After modification of
         # ! the PROFILE to add TCP connection on port 22, still not working
         connect_command = 'ftp ' + self._ip_address + '<< EOF\n binary\ncd ..\n'
-        shell_command = connect_command + ftp_command
-
+        quit_command = '\nquit\nEOF'
+        
+        shell_command = connect_command + ftp_command + quit_command
+        
         return self.execute_shell_command(shell_command)
 
     def format_command(self, shell_command):
