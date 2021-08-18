@@ -144,12 +144,12 @@ class Utils(object, metaclass=SingletonMeta):
                 os.mkdir(directory)
             rc = 0
         except PermissionError:
-            Log().logger.error(
+            Log().logger.critical(
                 'PermissionError: Permission denied: Directory creation failed: '
                 + directory)
-            rc = -1
-
-        return rc
+            sys.exit(-1)
+        else:
+            return rc
 
     def execute_shell_command(self, shell_command):
         """Separate method to execute shell command.

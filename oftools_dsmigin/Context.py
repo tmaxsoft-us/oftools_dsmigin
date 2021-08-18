@@ -176,8 +176,8 @@ class Context(object, metaclass=SingletonMeta):
 
             Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
         working_directory = os.path.expandvars(working_directory)
-        self._working_directory = os.path.abspath(working_directory)
 
+        self._working_directory = os.path.abspath(working_directory)
         self._conversion_directory = self._working_directory + '/conversion'
         self._copybooks_directory = self._working_directory + '/copybooks'
         self._csv_backups_directory = self._working_directory + '/csv_backups'
@@ -186,10 +186,7 @@ class Context(object, metaclass=SingletonMeta):
         self._log_directory = self._working_directory + '/log'
 
         if self._initialization:
-            rc = Utils().create_directory(self._working_directory)
-            if rc != 0:
-                return rc
-
+            Utils().create_directory(self._working_directory)
             Utils().create_directory(self._conversion_directory)
             Utils().create_directory(self._copybook_directory)
             Utils().create_directory(self._csv_backup_directory)
@@ -198,12 +195,13 @@ class Context(object, metaclass=SingletonMeta):
             Utils().create_directory(self._log_directory)
 
         try:
-            if os.path.isdir(self._working_directory) is False:
+            if os.path.isdir(self._working_directory) is True:
+                if os.path.isdir(self._log_directory) is False:
+                    raise FileNotFoundError()
+            else:
                 raise FileNotFoundError()
         except FileNotFoundError:
-            Log().logger.error(
-                'FileNotFoundError: No such file or directory: ' +
-                working_directory)
+            Log().logger.critical('FileNotFoundError: Not a dataset migration working directory: Please initialize it with the --init option:' + working_directory)
             sys.exit(-1)
 
     @property
