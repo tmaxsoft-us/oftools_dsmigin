@@ -7,7 +7,8 @@
       listcat.run(records)"""
 
 # Generic/Built-in modules
-import os
+import collections
+import csv
 
 # Third-party modules
 
@@ -15,6 +16,7 @@ import os
 from .Context import Context
 from .Log import Log
 from .MigrationEnum import Col
+from .ListcatEnum import LCol
 from .Utils import Utils
 
 
@@ -33,13 +35,125 @@ class Listcat(object):
             _update_csv_records(): Take the liscat extracted data to update the CSV records.
             run(records): Main method for listcat data retrieval."""
 
-    def __init__(self):
+    def __init__(self, file_path):
         """Initialize all attributes.
             """
-        self._file_path = Context().listcat_directory + '/listcat.txt'
-        self._data = None
+        self._headers = [column.name for column in LCol]
 
-    def read(self):
+        self._file_path = file_path
+
+        self._data_txt = []
+        self._data = collections.OrderedDict()
+
+    @property
+    def data(self):
+        """
+        """
+        return self._data
+
+    def _read_txt(self):
+        """
+        """
+        file_data = Utils().read_file(self._file_path)
+        self._data_txt = file_data.splitlines()
+
+    def _get_data_txt(self):
+        """Analyze the data extracted from the listcat output file.
+
+            Returns:
+                A list, the listcat information correctly formatted and organized."""
+        rc = 0
+        flag = 0
+
+        for line in self._data_txt:
+            if flag == 0 and 'DATA ------- ' in line:
+                flag = 1
+                fields = line.split()
+                dsn = fields[3]
+                recfm = 'VB'
+                vsam = ''
+                keyoff = ''
+                keylen = ''
+                maxlrecl = ''
+                avglrecl = ''
+                cisize = ''
+
+                # Log().logger.debug('Dataset identified:' + dsn)
+
+            elif flag == 1 and 'ATTRIBUTES' in line:
+                flag = 2
+                # Log().logger.debug('Attributes section found')
+
+            elif flag == 2:
+                # Log().logger.debug('Analyzing attributes')
+                dataset_attributes = line.replace('-', '')
+                dataset_attributes = dataset_attributes.split()
+
+                for attr in dataset_attributes:
+                    if attr.startswith('RKP'):
+                        keyoff = attr.replace('RKP', '')
+                    elif attr.startswith('KEYLEN'):
+                        keylen = attr.replace('KEYLEN', '')
+                    elif attr.startswith('MAXLRECL'):
+                        maxlrecl = attr.replace('MAXLRECL', '')
+                    elif attr.startswith('AVGLRECL'):
+                        avglrecl = attr.replace('AVGLRECL', '')
+                    elif attr.startswith('CISIZE'):
+                        cisize = attr.replace('CISIZE', '')
+                    elif attr.startswith('INDEXED'):
+                        vsam = 'KS'
+                    elif attr.startswith('NONINDEXED'):
+                        vsam = 'ES'
+                    elif attr.startswith('NUMBERED'):
+                        vsam = 'RR'
+
+                    #? Which method is best?
+                    # Re-initialization for the next dataset
+                    if 'STATISTICS' in line:
+                        self._data[dsn] = [
+                            recfm, vsam, keyoff, keylen, maxlrecl, avglrecl,
+                            cisize
+                        ]
+                        flag = 0
+                        break
+
+        if rc == 0:
+            status = 'SUCCESS'
+        #TODO No way to fail this at the moment
+        else:
+            status = 'FAILED'
+
+        Log().logger.info('LISTCAT FILE ' + status)
+
+        return rc
+
+    def _write_csv(self):
+        """
+        """
+        rc = 0
+
+        try:
+            #TODO analyze error below (commented out) to have the proper message for IOError
+            # with open(self._file_path, 'a') as fd:
+            with open(Context().listcat_directory + '/listcat.csv', 'a') as fd:
+                writer = csv.writer(fd, delimiter=',')
+                writer.writerow(self._headers)
+                for key, value in self._data.items():
+                    record = [key] + value
+                    writer.writerow(record)
+        except IOError:
+            Log().logger.error('Issue writing to CSV file')
+
+        return rc
+
+    def generate_csv(self):
+        """
+        """
+        self._read_txt()
+        self._get_data_txt()
+        self._write_csv()
+
+    def read_csv(self):
         """Read the content of the listcat output file and store the result in a string.
 
             One listcat file can contains the info of one or multiple datasets.
@@ -50,16 +164,29 @@ class Listcat(object):
             Returns:
                 A string, the data extracted from the listcat text file."""
         rc = 0
+        i = 0
+
         try:
             with open(self._file_path, mode='r') as fd:
-                self._data = fd.read()
+                reader = csv.reader(fd, delimiter=',')
+                for row in reader:
+                    # if i == 0:
+                    #     rc = self._check_headers(reader[i])
+                    # else:
+                    if i > 0:
+                        self._data[row[0]] = row[1:]
 
-            if self._data != None:
-                Log().logger.debug('[listcat] Listcat file import successful')
-                rc = 0
-            else:
-                Log().logger.error('[listcat] Listcat file import failed')
-                rc = -1
+                    i += 1
+            rc = 0
+
+            #     self._data = fd.read()
+
+            # if self._data != None:
+            #     Log().logger.debug('[listcat] Listcat file import successful')
+            #     rc = 0
+            # else:
+            #     Log().logger.error('[listcat] Listcat file import failed')
+            #     rc = -1
 
         except FileNotFoundError:
             Log().logger.warning(
@@ -70,57 +197,7 @@ class Listcat(object):
         finally:
             return rc
 
-    def get_data(self, record):
-        """Analyze the data extracted from the listcat output file.
-
-            Returns:
-                A list, the listcat information correctly formatted and organized."""
-        rc = 0
-        flag = 0
-
-        for line in self._data.splitlines():
-            if flag == 0:
-                if 'DATA ------- ' + record[Col.DSN.value] in line:
-                    flag = 1
-                    record[Col.RECFM.value] = 'VB'
-            else:
-                info_list = line.replace('-', '')
-                info_list = info_list.split()
-
-                for element in info_list:
-                    if element.startswith('RKP'):
-                        record[Col.KEYOFF.value] = element.replace('RKP', '')
-                    elif element.startswith('KEYLEN'):
-                        record[Col.KEYLEN.value] = element.replace('KEYLEN', '')
-                    elif element.startswith('MAXLRECL'):
-                        record[Col.MAXLRECL.value] = element.replace(
-                            'MAXLRECL', '')
-                    elif element.startswith('AVGLRECL'):
-                        record[Col.AVGLRECL.value] = element.replace(
-                            'AVGLRECL', '')
-                    elif element.startswith('CISIZE'):
-                        record[Col.CISIZE.value] = element.replace('CISIZE', '')
-                    elif element.startswith('INDEXED'):
-                        record[Col.VSAM.value] = 'KS'
-                    #? How to identify VSAM datasets ES and RR?
-
-                #TODO Trying to avoid reading useless lines down below
-                if record[Col.KEYLEN.value] != '' and record[Col.VSAM.value] != '':
-                    break
-                if 'INDEX ------ ' + record[Col.DSN.value] in line:
-                    break
-
-        if rc == 0:
-            status = 'SUCCESS'
-        #TODO No way to fail this at the moment
-        else:
-            status = 'FAILED'
-
-        Log().logger.info('LISTCAT FILE' + status)
-
-        return rc
-
-    def update_dataset_record(self, record):
+    def update_index_and_data(self, record):
         """Take the liscat extracted data to update the CSV records.
 
             It first update the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.

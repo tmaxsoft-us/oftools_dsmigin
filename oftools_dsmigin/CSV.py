@@ -90,9 +90,12 @@ class CSV(object):
                     raise FileNotFoundError()
 
         except FileNotFoundError:
-            Log().logger.error('FileNotFoundError: No such file or directory: ' +
-                              self._file_path)
-            Log().logger.info('[csv] Please initialize dataset migration CSV file with --init option')
+            Log().logger.error(
+                'FileNotFoundError: No such file or directory: ' +
+                self._file_path)
+            Log().logger.info(
+                '[csv] Please initialize dataset migration CSV file with --init option'
+            )
             sys.exit(-1)
 
         finally:

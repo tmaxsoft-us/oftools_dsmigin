@@ -282,6 +282,8 @@ class Utils(object, metaclass=SingletonMeta):
                         file_data = []
                         for row in out:
                             file_data.append(row)
+                    elif extension == 'txt':
+                        file_data = fd.read()
                     else:
                         raise TypeError()
 

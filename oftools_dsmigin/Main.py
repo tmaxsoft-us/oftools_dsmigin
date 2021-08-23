@@ -16,6 +16,7 @@ from . import __version__
 from .Context import Context
 from .CSV import CSV
 from .JobFactory import JobFactory
+from .Listcat import Listcat
 from .Log import Log
 # from .Statistics import Statistics
 from .Utils import Utils
@@ -128,6 +129,15 @@ class Main(object):
             dest='init',
             help='Initializes the CSV file and the working directory specified',
             required=False)
+
+        optional.add_argument(
+            '--listcat-gen',
+            action='store',
+            dest='listcat_gen',
+            help='Generates a CSV file from a listcat text file',
+            metavar='FILE',
+            required=False,
+            type=str)
 
         optional.add_argument(
             '-L',
@@ -253,7 +263,7 @@ class Main(object):
         try:
             if args.listcat:
                 Context().ip_address = args.ip_address
-                Context().set_listcat()
+                Context().listcat = Listcat(Context().listcat_directory + '/listcat.csv')
                 job = job_factory.create('listcat')
                 jobs.append(job)
             if args.ftp:
@@ -279,6 +289,7 @@ class Main(object):
 
             Returns:
                 integer -- General return code of the program."""
+        rc = 0
         # For testing purposes. allow to remove logs when executing coverage
         # logging.disable(logging.CRITICAL)
         Log().open_stream()
@@ -286,11 +297,11 @@ class Main(object):
         # Parse command-line options
         args = self._parse_arg()
 
-        # Set log level
+        # Set log level and log oftools_dsmigin command as DEBUG
         Log().set_level(args.log_level)
+        Log().logger.debug(' '.join((arg for arg in sys.argv)))
 
-        # Variables initialization for program execution
-        rc = 0
+        # Initialize variables for program execution
         count_dataset = 0
         Context().initialization = args.init
         Context().max_datasets = args.number
@@ -305,6 +316,11 @@ class Main(object):
 
         # CSV file initialization
         storage_resource = CSV(args.csv)
+
+        # Listcat CSV file generation
+        if args.listcat_gen:
+            listcat = Listcat(args.listcat_gen)
+            listcat.generate_csv()
 
         # Create jobs
         jobs = self._create_jobs(args, storage_resource)

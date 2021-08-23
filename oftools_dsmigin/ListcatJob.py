@@ -12,6 +12,7 @@
 # Third-party modules
 
 # Owned modules
+from .ListcatEnum import LCol
 from .MigrationEnum import Col
 from .Context import Context
 from .Job import Job
@@ -63,7 +64,7 @@ class ListcatJob(Job):
             rc = 0
 
         if rc == 0:
-            Log().logger.debug('[listcat] Proceeding: Dataset eligible: ' +
+            Log().logger.debug('[listcat] Proceeding, dataset eligible: ' +
                                record[Col.DSN.value])
 
         return rc
@@ -86,7 +87,7 @@ class ListcatJob(Job):
 
         return rc
 
-    def _get_dataset_info(self, record):
+    def _get_dataset_record(self, record):
         """Executes the FTP command on Mainframe to retrieve dataset info.
 
             It executes the ftp command and then the ls command on Mainframe to retrieve general info about dataset such as RECFM, LRECL, BLKSIZE, DSORG and VOLSER. It uses the submethod formatting_dataset_info to parse the output.
@@ -104,39 +105,69 @@ class ListcatJob(Job):
         stdout, _, rc = Utils().execute_ftp_command(ftp_command)
 
         if rc == 0:
-            line = stdout.splitlines()
-            fields = line[1].split()
+            lines = stdout.splitlines()
+            if len(lines) > 0:
+                fields = lines[1].split()
 
-            if fields[0] == 'Migrated':
-                record[Col.VOLSER.value] = fields[0]
-                Log().logger.info('[listcat] Dataset marked as "Migrated"')
-                self._recall(record)
-                Log().logger.debug(
-                    '[listcat] Running the ftp ls command once again')
-                stdout, _, rc = Utils().execute_ftp_command(ftp_command)
-                if rc == 0:
-                    line = stdout.splitlines()
-                    fields = line[1].split()
-                else:
-                    status = 'FAILED'
-                    Log().logger.info('LISTCAT MAINFRAME ' + status)
-                    return rc
+                if fields[0] == 'Migrated':
+                    record[Col.VOLSER.value] = fields[0]
+                    Log().logger.info('[listcat] Dataset marked as "Migrated"')
+                    self._recall(record)
+                    Log().logger.debug(
+                        '[listcat] Running the ftp ls command once again')
+                    stdout, _, rc = Utils().execute_ftp_command(ftp_command)
+                    if rc == 0:
+                        line = stdout.splitlines()
+                        fields = line[1].split()
+                    else:
+                        status = 'FAILED'
+                        Log().logger.info('LISTCAT MAINFRAME ' + status)
+                        return rc
 
-            if fields[0] == 'VSAM':
-                record[Col.DSORG.value] = fields[0]
+                if fields[0] == 'VSAM':
+                    record[Col.DSORG.value] = fields[0]
 
-            if len(fields) > 7:
-                record[Col.RECFM.value] = fields[-5]
-                record[Col.LRECL.value] = fields[-4]
-                record[Col.BLKSIZE.value] = fields[-3]
-                record[Col.DSORG.value] = fields[-2]
-                record[Col.VOLSER.value] = fields[0]
+                if len(fields) > 7:
+                    record[Col.RECFM.value] = fields[-5]
+                    record[Col.LRECL.value] = fields[-4]
+                    record[Col.BLKSIZE.value] = fields[-3]
+                    record[Col.DSORG.value] = fields[-2]
+                    record[Col.VOLSER.value] = fields[0]
 
-            status = 'SUCCESS'
+                status = 'SUCCESS'
+            else:
+                status = 'FAILED'
         else:
             status = 'FAILED'
 
         Log().logger.info('LISTCAT MAINFRAME ' + status)
+
+        return rc
+
+    def _update_dataset_record(self, record):
+        """
+        """
+        dsn = record[Col.DSN.value]
+        
+        if dsn in Context().listcat.data.keys():
+            listcat_record = [dsn] + Context().listcat.data[dsn]
+
+            record[Col.RECFM.value] = listcat_record[LCol.RECFM.value]
+            record[Col.VSAM.value] = listcat_record[LCol.VSAM.value]
+            record[Col.KEYOFF.value] = listcat_record[LCol.KEYOFF.value]
+            record[Col.KEYLEN.value] = listcat_record[LCol.KEYLEN.value]
+            record[Col.MAXLRECL.value] = listcat_record[LCol.MAXLRECL.value]
+            record[Col.AVGLRECL.value] = listcat_record[LCol.AVGLRECL.value]
+            record[Col.CISIZE.value] = listcat_record[LCol.CISIZE.value]
+
+            status = 'SUCCESS'
+            rc = 0
+        else:
+            Log().logger().info('[listcat] Dataset not found in the Listcat file: Skipping dataset')
+            status = 'SKIPPED'
+            rc = 0
+
+        Log().logger.info('LISTCAT FILE ' + status)
 
         return rc
 
@@ -160,11 +191,11 @@ class ListcatJob(Job):
 
         # Retrieve info from mainframe using FTP
         if Context().ip_address != None:
-            rc1 = self._get_dataset_info(record)
+            rc1 = self._get_dataset_record(record)
 
         # Retrieving info from listcat file for VSAM datasets
-        if Context().listcat != None and record[Col.DSORG.value] == 'VSAM':
-            rc2 = Context().listcat.get_data(record)
+        if record[Col.DSORG.value] == 'VSAM':
+            rc2 = self._update_dataset_record(record)
             # rc = listcat.update_dataset_record()
 
         # Processing the result of the listcat

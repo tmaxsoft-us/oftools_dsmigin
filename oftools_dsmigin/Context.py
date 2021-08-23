@@ -17,7 +17,6 @@ import sys
 # Third-party modules
 
 # Owned modules
-from .Listcat import Listcat
 from .Log import Log
 from .Utils import Utils
 
@@ -66,8 +65,8 @@ class Context(object, metaclass=SingletonMeta):
 
         # Directories
         self._conversion_directory = ''
-        self._copybook_directory = ''
-        self._csv_backup_directory = ''
+        self._copybooks_directory = ''
+        self._csv_backups_directory = ''
         self._datasets_directory = ''
         self._listcat_directory = ''
         self._log_directory = ''
@@ -135,16 +134,16 @@ class Context(object, metaclass=SingletonMeta):
         return self._conversion_directory
 
     @property
-    def copybook_directory(self):
+    def copybooks_directory(self):
         """Getter method for the attribute _copybook_directory.
             """
-        return self._copybook_directory
+        return self._copybooks_directory
 
     @property
-    def csv_backup_directory(self):
+    def csv_backups_directory(self):
         """Getter method for the attribute _copybook_directory.
             """
-        return self._csv_backup_directory
+        return self._csv_backups_directory
 
     @property
     def datasets_directory(self):
@@ -188,8 +187,8 @@ class Context(object, metaclass=SingletonMeta):
         if self._initialization:
             Utils().create_directory(self._working_directory)
             Utils().create_directory(self._conversion_directory)
-            Utils().create_directory(self._copybook_directory)
-            Utils().create_directory(self._csv_backup_directory)
+            Utils().create_directory(self._copybooks_directory)
+            Utils().create_directory(self._csv_backups_directory)
             Utils().create_directory(self._datasets_directory)
             Utils().create_directory(self._listcat_directory)
             Utils().create_directory(self._log_directory)
@@ -234,12 +233,13 @@ class Context(object, metaclass=SingletonMeta):
             """
         return self._listcat
 
-    def set_listcat(self):
+    @listcat.setter
+    def listcat(self, listcat):
         """Setter method for the attribute _listcat.
             """
-        self._listcat = Listcat()
+        self._listcat = listcat
 
-        rc = self._listcat.read()
+        rc = self._listcat.read_csv()
         if rc != 0:
             Log().logger.warning('[listcat] Skipping listcat file data retrieval for VSAM datasets')
             self.listcat = None

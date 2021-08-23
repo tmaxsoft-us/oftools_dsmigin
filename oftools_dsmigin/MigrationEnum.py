@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This module handles the enumeration of all the column names for the CSV file.
+"""This module handles the enumeration of all the column names for the migration CSV file.
 
-Typical usage example:
-
-    records[Col.DSN.name] = 'DSN'
-    records[Col.DSN.value] = 0
-"""
+    Typical usage example:
+      records[Col.DSN.name] = 'DSN'
+      records[Col.DSN.value] = 0"""
 
 # Generic/Built-in modules
 import enum
@@ -18,8 +16,8 @@ import enum
 
 @enum.unique
 class Col(enum.Enum):
-    """Just an enumeration of all the columns we need in our CSV file.
-    """
+    """Just an enumeration of all the columns we need in the migration CSV file.
+        """
     DSN = 0
     COPYBOOK = 1
     RECFM = 2
