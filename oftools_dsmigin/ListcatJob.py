@@ -12,11 +12,12 @@
 # Third-party modules
 
 # Owned modules
-from .ListcatEnum import LCol
-from .MigrationEnum import Col
 from .Context import Context
+from .DatasetRecord import DatasetRecord
 from .Job import Job
+from .ListcatEnum import LCol
 from .Log import Log
+from .MigrationEnum import Col
 from .Utils import Utils
 
 
@@ -69,7 +70,7 @@ class ListcatJob(Job):
 
         return rc
 
-    def _recall(self, record):
+    def _recall(self, dataset_name):
         """Executes FTP command to make dataset available to download.
 
             If a dataset has 'Migrated' as VOLSER parameter, the program executes this recall method just to open the diretory containing the dataset to trigger download execution from the mainframe.
@@ -79,13 +80,96 @@ class ListcatJob(Job):
 
             Returns:
                 An integer, the return code of the method."""
-        Log().logger.info('[listcat] Recalling migrated dataset:' +
-                          record[Col.DSN.value])
-        ftp_command = 'cd ' + record[Col.DSN.value]
+        Log().logger.info('[listcat] Recalling migrated dataset: ' +
+                          dataset_name)
+        ftp_command = 'cd ' + dataset_name
         Log().logger.debug('[listcat] ' + ftp_command)
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
         return rc
+
+    def _get_GDG(self, record):
+        """
+        """
+        ftp_command = 'cd ' + record[Col.DSN.value] + '\nls'
+        Log().logger.debug('[listcat] ' + ftp_command)
+        stdout, _, rc = Utils().execute_ftp_command(ftp_command)
+
+        if rc == 0:
+            lines = stdout.splitlines()
+            if len(lines) > 0:
+                fields = lines[-1].split()
+                GDG_base = record[Col.DSN.value]
+                record[Col.DSN.value] += '.' + fields[-1]
+
+                if fields[0] == 'Migrated':
+                    record[Col.VOLSER.value] = fields[0]
+                    Log().logger.info('[listcat] Dataset marked as "Migrated"')
+                    self._recall(fields[-1])
+                    Log().logger.debug(
+                        '[listcat] Running the ftp ls command once again')
+                    stdout, _, rc = Utils().execute_ftp_command(ftp_command)
+                    if rc == 0:
+                        line = stdout.splitlines()
+                        fields = line[-1].split()
+                    else:
+                        status = 'FAILED'
+                        Log().logger.info('LISTCAT MAINFRAME ' + status)
+                        return rc
+
+                if len(fields) > 7:
+                    record[Col.RECFM.value] = fields[-5]
+                    record[Col.LRECL.value] = fields[-4]
+                    record[Col.BLKSIZE.value] = fields[-3]
+                    record[Col.DSORG.value] = fields[-2]
+                    record[Col.VOLSER.value] = fields[0]
+
+                if Context().generations > 0:
+                    shift = Context().generations + 2
+                    for i in range(Context().generations, 1, -1):
+                        j = i - shift
+                        fields = lines[j].split()
+                        if fields[-1].startswith('G'):
+                            generation_record = ['' for _ in range(len(Col))]
+                            generation_record[
+                                Col.DSN.value] = GDG_base + '.' + fields[-1]
+
+                            if fields[0] == 'Migrated':
+                                generation_record[Col.VOLSER.value] = fields[0]
+                                Log().logger.info(
+                                    '[listcat] Dataset marked as "Migrated"')
+                                self._recall(fields[-1])
+                                Log().logger.debug(
+                                    '[listcat] Running the ftp ls command once again'
+                                )
+                                ftp_command = 'cd ' + GDG_base + '\nls'
+                                Log().logger.debug('[listcat] ' + ftp_command)
+                                stdout, _, rc = Utils().execute_ftp_command(
+                                    ftp_command)
+                                if rc == 0:
+                                    line = stdout.splitlines()
+                                    fields = line[j].split()
+                                else:
+                                    status = 'FAILED'
+                                    Log().logger.info('LISTCAT MAINFRAME ' +
+                                                      status)
+                                    return rc
+
+                            if len(fields) > 7:
+                                generation_record[Col.RECFM.value] = fields[-5]
+                                generation_record[Col.LRECL.value] = fields[-4]
+                                generation_record[
+                                    Col.BLKSIZE.value] = fields[-3]
+                                generation_record[Col.DSORG.value] = fields[-2]
+                                generation_record[Col.VOLSER.value] = fields[0]
+
+                            new_record = DatasetRecord()
+                            new_record.columns = generation_record
+                            Context().records.append(new_record)
+                        else:
+                            Log().logger.debug(
+                                '[listcat] Latest generation reached')
+                            break
 
     def _get_dataset_record(self, record):
         """Executes the FTP command on Mainframe to retrieve dataset info.
@@ -112,7 +196,7 @@ class ListcatJob(Job):
                 if fields[0] == 'Migrated':
                     record[Col.VOLSER.value] = fields[0]
                     Log().logger.info('[listcat] Dataset marked as "Migrated"')
-                    self._recall(record)
+                    self._recall(fields[-1])
                     Log().logger.debug(
                         '[listcat] Running the ftp ls command once again')
                     stdout, _, rc = Utils().execute_ftp_command(ftp_command)
@@ -124,7 +208,10 @@ class ListcatJob(Job):
                         Log().logger.info('LISTCAT MAINFRAME ' + status)
                         return rc
 
-                if fields[0] == 'VSAM':
+                if fields[0] == 'GDG':
+                    record[Col.DSORG.value] = fields[0]
+                    self._get_GDG(record)
+                elif fields[0] == 'VSAM':
                     record[Col.DSORG.value] = fields[0]
 
                 if len(fields) > 7:
@@ -148,7 +235,7 @@ class ListcatJob(Job):
         """
         """
         dsn = record[Col.DSN.value]
-        
+
         if dsn in Context().listcat.data.keys():
             listcat_record = [dsn] + Context().listcat.data[dsn]
 
@@ -163,7 +250,9 @@ class ListcatJob(Job):
             status = 'SUCCESS'
             rc = 0
         else:
-            Log().logger().info('[listcat] Dataset not found in the Listcat file: Skipping dataset')
+            Log().logger.info(
+                '[listcat] Dataset not found in the Listcat file: Skipping dataset'
+            )
             status = 'SKIPPED'
             rc = 0
 

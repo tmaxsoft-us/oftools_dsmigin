@@ -60,6 +60,7 @@ class Context(object, metaclass=SingletonMeta):
 
         # Required variables for program execution
         self._initialization = False
+        self._generations = 0
         self._max_datasets = 0
         self._tag = ''
 
@@ -100,6 +101,19 @@ class Context(object, metaclass=SingletonMeta):
         """Setter method for the attribute _initialization.
             """
         self._initialization = initialization
+
+    @property
+    def generations(self):
+        """Getter method for the attribute _generations.
+            """
+        return self._generations
+
+    @generations.setter
+    def generations(self, generations):
+        """Setter method for the attribute _generations.
+            """
+        if generations is not None:
+            self._generations = generations
 
     @property
     def max_datasets(self):
@@ -242,7 +256,7 @@ class Context(object, metaclass=SingletonMeta):
         rc = self._listcat.read_csv()
         if rc != 0:
             Log().logger.warning('[listcat] Skipping listcat file data retrieval for VSAM datasets')
-            self.listcat = None
+            self._listcat = None
 
     @property
     def prefix(self):

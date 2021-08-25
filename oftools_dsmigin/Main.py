@@ -76,7 +76,7 @@ class Main(object):
 
         # Jobs arguments
         jobs.add_argument(
-            '-l',
+            '-L',
             '--listcat',
             action='store_true',
             dest='listcat',
@@ -85,7 +85,7 @@ class Main(object):
             required=False)
 
         jobs.add_argument(
-            '-f',
+            '-F',
             '--ftp',
             action='store_true',
             dest='ftp',
@@ -94,7 +94,7 @@ class Main(object):
             required=False)
 
         jobs.add_argument(
-            '-m',
+            '-M',
             '--migration',
             action='store_true',
             dest='migration',
@@ -111,6 +111,17 @@ class Main(object):
             help=
             'flag to modify the behavior of dsmigin, executes conversion only',
             required=False)
+
+        optional.add_argument(
+            '-g',
+            '--generations',
+            action='store',
+            dest='generations',
+            help=
+            'Specifically for GDG datasets, number of generations to be processed',
+            metavar='INTEGER',
+            required=False,
+            type=int)
 
         optional.add_argument(
             '-i',
@@ -140,7 +151,7 @@ class Main(object):
             type=str)
 
         optional.add_argument(
-            '-L',
+            '-l',
             '--log-level',
             action='store',
             choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -153,15 +164,14 @@ class Main(object):
             type=str)
 
         # It is not possible to handle all dataset downloads at once, there is a certain timeout using FTP to download from the Mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little. This also allows to limit CPU load on the Mainframe
-        optional.add_argument(
-            '-n',
-            '--number',
-            action='store',
-            dest='number',
-            help='number of datasets to be downloaded from the Mainframe',
-            metavar='NUMBER',
-            required=False,
-            type=int)
+        optional.add_argument('-n',
+                              '--number',
+                              action='store',
+                              dest='number',
+                              help='number of datasets to be processed',
+                              metavar='INTEGER',
+                              required=False,
+                              type=int)
 
         optional.add_argument('-p',
                               '--prefix',
@@ -263,7 +273,8 @@ class Main(object):
         try:
             if args.listcat:
                 Context().ip_address = args.ip_address
-                Context().listcat = Listcat(Context().listcat_directory + '/listcat.csv')
+                listcat = Listcat(Context().listcat_directory + '/listcat.csv')
+                Context().listcat = listcat
                 job = job_factory.create('listcat')
                 jobs.append(job)
             if args.ftp:
@@ -305,6 +316,8 @@ class Main(object):
         count_dataset = 0
         Context().initialization = args.init
         Context().max_datasets = args.number
+        #? This option might be necessary (and optional) only for listcat job, to write as many lines in the CSV file as necessary
+        Context().generations = args.generations
         Context().tag = args.tag
         Context().working_directory = args.working_directory
 
