@@ -169,7 +169,7 @@ class MigrationJob(Job):
                 rc = 1
 
         if rc == 0:
-            Log().logger.debug('[migration] Proceeding: Dataset eligible: ' +
+            Log().logger.debug('[migration] Proceeding, dataset eligible: ' +
                                record[Col.DSN.value])
 
         return rc

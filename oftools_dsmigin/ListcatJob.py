@@ -193,35 +193,37 @@ class ListcatJob(Job):
             if len(lines) > 0:
                 fields = lines[1].split()
 
-                if fields[0] == 'Migrated':
-                    record[Col.VOLSER.value] = fields[0]
-                    Log().logger.info('[listcat] Dataset marked as "Migrated"')
-                    self._recall(fields[-1])
-                    Log().logger.debug(
-                        '[listcat] Running the ftp ls command once again')
-                    stdout, _, rc = Utils().execute_ftp_command(ftp_command)
-                    if rc == 0:
-                        line = stdout.splitlines()
-                        fields = line[1].split()
-                    else:
-                        status = 'FAILED'
-                        Log().logger.info('LISTCAT MAINFRAME ' + status)
-                        return rc
+                #? How do you want to handle datasets in Tape volume?
+                if len(fields) > 1 and fields[1] != 'Tape':
+                    if fields[0] == 'Migrated':
+                        record[Col.VOLSER.value] = fields[0]
+                        Log().logger.info('[listcat] Dataset marked as "Migrated"')
+                        self._recall(fields[-1])
+                        Log().logger.debug(
+                            '[listcat] Running the ftp ls command once again')
+                        stdout, _, rc = Utils().execute_ftp_command(ftp_command)
+                        if rc == 0:
+                            line = stdout.splitlines()
+                            fields = line[1].split()
+                        else:
+                            status = 'FAILED'
+                            Log().logger.info('LISTCAT MAINFRAME ' + status)
+                            return rc
 
-                if fields[0] == 'GDG':
-                    record[Col.DSORG.value] = fields[0]
-                    self._get_GDG(record)
-                elif fields[0] == 'VSAM':
-                    record[Col.DSORG.value] = fields[0]
+                    if fields[0] == 'GDG':
+                        record[Col.DSORG.value] = fields[0]
+                        self._get_GDG(record)
+                    elif fields[0] == 'VSAM':
+                        record[Col.DSORG.value] = fields[0]
 
-                if len(fields) > 7:
-                    record[Col.RECFM.value] = fields[-5]
-                    record[Col.LRECL.value] = fields[-4]
-                    record[Col.BLKSIZE.value] = fields[-3]
-                    record[Col.DSORG.value] = fields[-2]
-                    record[Col.VOLSER.value] = fields[0]
+                    if len(fields) > 7:
+                        record[Col.RECFM.value] = fields[-5]
+                        record[Col.LRECL.value] = fields[-4]
+                        record[Col.BLKSIZE.value] = fields[-3]
+                        record[Col.DSORG.value] = fields[-2]
+                        record[Col.VOLSER.value] = fields[0]
 
-                status = 'SUCCESS'
+                    status = 'SUCCESS'
             else:
                 status = 'FAILED'
         else:
@@ -236,6 +238,7 @@ class ListcatJob(Job):
         """
         dsn = record[Col.DSN.value]
 
+        #? Handle FileNotFound before doing that, because tried to access .keys() on a NoneType object is raising an exception
         if dsn in Context().listcat.data.keys():
             listcat_record = [dsn] + Context().listcat.data[dsn]
 

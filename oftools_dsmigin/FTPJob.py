@@ -102,7 +102,7 @@ class FTPJob(Job):
                 rc = 1
 
         if rc == 0:
-            Log().logger.debug('[ftp] Proceeding: Dataset eligible: ' +
+            Log().logger.debug('[ftp] Proceeding, dataset eligible: ' +
                                record[Col.DSN.value])
 
         return rc
@@ -144,7 +144,7 @@ class FTPJob(Job):
 
             Returns:
                 A 2D-list, dataset data after all the changes applied in the download execution."""
-
+        rc = 0
         # quote is an FTP option and RDW is dataset length for the given dataset
         # This conditional statement allow to retrieve record length for V (Variable) or VB (Variable Blocked) for successful download
         if record[Col.RECFM.value] != '' and record[Col.RECFM.value][0] == 'V':
@@ -192,7 +192,7 @@ class FTPJob(Job):
 
         # Skipping dataset download under specific conditions
         rc = self._analyze(record)
-        if rc != 1:
+        if rc != 0:
             return rc
 
         # Downloading dataset from Mainframe using FTP
