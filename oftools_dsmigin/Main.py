@@ -322,8 +322,9 @@ class Main(object):
             Log().logger.error(
                 'Unexpected error detected during the job creation')
             sys.exit(-1)
-
-        return jobs
+        else:
+            Log().logger.debug('Number of jobs created: ' + len(jobs))
+            return jobs
 
     def run(self):
         """Performs all the steps to execute jobs of oftools_dsmigin.
@@ -384,7 +385,7 @@ class Main(object):
                                 'An error occurred. Aborting program execution')
                             break
 
-                if rc == 0:
+                if rc == 0 and len(jobs) > 0:
                     count_dataset += 1
 
                     if Context().max_datasets != 0:
@@ -398,22 +399,24 @@ class Main(object):
                     else:
                         Log().logger.info('Current dataset count: ' +
                                           str(count_dataset))
+
+            # rc = statistics.run()
+            # if rc < 0:
+            #     Log().logger.error(
+            #         'An error occurred. Aborting statistics processing')
+
+            # Handle clear option
+            #TODO Code the Clear module
+            # if args.clear is True:
+            #     clear = Clear()
+            #     clear.run()
+
         except KeyboardInterrupt:
-            #? Should I put the full cleanup (commands just below) in here just in case? YES
             storage_resource.write()
-            # HERE
+            Context().clear_all()
+            Log().close_file()
+            Log().close_stream()
             raise KeyboardInterrupt()
-
-        # rc = statistics.run()
-        # if rc < 0:
-        #     Log().logger.error(
-        #         'An error occurred. Aborting statistics processing')
-
-        # Handle clear option
-        #TODO Code the Clear module
-        # if args.clear is True:
-        #     clear = Clear()
-        #     clear.run()
 
         # Need to clear context completely and close log at the end of the execution
         Context().clear_all()

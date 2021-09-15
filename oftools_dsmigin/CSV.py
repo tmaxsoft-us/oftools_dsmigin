@@ -47,6 +47,7 @@ class CSV(object):
         """Initializes all attributes.
             """
         self._headers = [column.name for column in Col]
+        self._current_headers = []
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
@@ -85,6 +86,9 @@ class CSV(object):
                                 record = DatasetRecord()
                                 record.columns = self._data[i]
                                 Context().records.append(record)
+
+                        if rc != 0:
+                            self._update_columns(rc)
                 else:
                     if os.path.isdir(self._file_path):
                         raise IsADirectoryError()
@@ -140,7 +144,8 @@ class CSV(object):
                 rc = 0
             elif len(headers) < len(self._headers):
                 issue_message = 'Missing headers'
-                raise SystemError()
+                self._current_headers = headers
+                rc = 1
             elif len(headers) == len(self._headers):
                 for i in range(len(headers)):
                     header = headers[i].strip()
@@ -148,15 +153,23 @@ class CSV(object):
                         rc = 0
                     else:
                         issue_message = 'Typographical error on the header: ' + header
-                        raise SystemError()
+                        rc = -1
+                        break
             else:
-                issue_message = 'Too many headers'
-                raise SystemError()
+                issue_message = 'Extra headers'
+                self._current_headers = headers
+                rc = 2
+
+            if rc != 0:
+                Log().logger.warning(
+                    '[csv] Headers are not matching with the program definition: '
+                    + issue_message)
+                if rc == -1:
+                    raise SystemError()
+            else:
+                Log().logger.debug('[csv] Headers correctly specified')
 
         except SystemError:
-            Log().logger.error(
-                '[csv] Headers are not matching with the program definition: ' +
-                issue_message)
             Log().logger.error('[csv] Input file:')
             Log().logger.error(headers)
             Log().logger.error('[csv] Program definition:')
@@ -164,8 +177,30 @@ class CSV(object):
             sys.exit(-1)
 
         else:
-            Log().logger.debug('[csv] Headers correctly specified')
             return rc
+
+    def _update_columns(self, update_type):
+        """
+            """
+        diff_headers = list(set(self._headers) - set(self._current_headers))
+
+        for header in diff_headers:
+            # Missing headers
+            if update_type == 1:
+                Log().logger.info('[csv] Updating columns: Adding ' + header)
+                index = self._headers.index(header)
+                for i in range(len(Context().records)):
+                    record = Context().records[i].columns
+                    record.insert(index, '')
+            # Extra headers
+            elif update_type == 2:
+                Log().logger.info('[csv] Updating columns: Removing ' + header)
+                index = self._current_headers.index(header)
+                for i in range(len(Context().records)):
+                    record = Context().records[i].columns
+                    record.pop(index)
+
+        self.write()
 
     def write(self):
         """Write the changes on the dataset records to the CSV file.
