@@ -57,7 +57,7 @@ class FTPJob(Job):
         if record[Col.FTP.value] == 'F':
             Log().logger.debug('[ftp] FTP set to "F"')
             rc = 0
-        
+
         else:
             if record[Col.IGNORE.value] == 'Y':
                 Log().logger.info(skip_message + 'IGNORE set to "Y"')
@@ -99,9 +99,15 @@ class FTPJob(Job):
                         rc = 1
 
                 elif record[Col.DSORG.value] in unset_list:
-                    Log().logger.warning(skip_message +
-                                         'Missing DSORG parameter')
-                    rc = 1
+                    if record[Col.VOLSER.value] == 'Tape':
+                        Log().logger.debug(
+                            '[ftp] VOLSER set to "Tape": Dowloading and retrieving dataset info'
+                        )
+                        rc = 0
+                    else:
+                        Log().logger.warning(skip_message +
+                                             'Missing DSORG parameter')
+                        rc = 1
 
                 else:
                     Log().logger.error(skip_message + 'Invalid DSORG parameter')

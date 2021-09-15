@@ -395,14 +395,25 @@ class MigrationJob(Job):
             options += ' -k ' + record[Col.KEYLEN.value]
             options += ',' + record[Col.KEYOFF.value]
             options += ' -t CL'
-            
+
             if 'CATALOG' in Context().enable_column_list:
+                Log().logger.debug(
+                    '[migration] Using column value for CATALOG: ' +
+                    record[Col.CATALOG.value])
                 options += ' -c ' + record[Col.CATALOG.value]
             else:
+                Log().logger.debug(
+                    '[migration] Using default value for CATALOG: SYS1.MASTER.ICFCAT'
+                )
                 options += ' -c SYS1.MASTER.ICFCAT'
             if 'VOLSER' in Context().enable_column_list:
+                Log().logger.debug(
+                    '[migration] Using column value for VOLSER: ' +
+                    record[Col.VOLSER.value])
                 options += ' -v ' + record[Col.VOLSER.value]
             else:
+                Log().logger.debug(
+                    '[migration] Using default value for VOLSER: DEFVOL')
                 options += ' -v DEFVOL'
 
             idcams_define_command = 'idcams define' + ' -n ' + src_file + options

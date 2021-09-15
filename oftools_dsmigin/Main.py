@@ -323,7 +323,7 @@ class Main(object):
                 'Unexpected error detected during the job creation')
             sys.exit(-1)
         else:
-            Log().logger.debug('Number of jobs created: ' + len(jobs))
+            Log().logger.debug('Number of jobs created: ' + str(len(jobs)))
             return jobs
 
     def run(self):
