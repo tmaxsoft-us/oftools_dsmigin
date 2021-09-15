@@ -66,25 +66,28 @@ class Listcat(object):
         flag = 0
 
         for line in self._data_txt:
-            if flag == 0 and 'DATA ------- ' in line:
-                flag = 1
-                fields = line.split()
-                dsn = fields[3]
-                recfm = 'VB'
-                vsam = ''
-                keyoff = ''
-                keylen = ''
-                maxlrecl = ''
-                avglrecl = ''
-                cisize = ''
 
-                # Log().logger.debug('Dataset identified:' + dsn)
+            if 'LISTING FROM CATALOG' in line:
+                fields = line.split(' -- ')
+                catalog = fields[1].strip()
+
+            if flag == 0 and 'CLUSTER--' in line:
+                fields = line.split('--')
+                if not fields[1].startswith('...'):
+                    Log().logger.debug('Dataset identified:' + fields[1])
+                    flag = 1
+                    dsn = fields[1]
+                    recfm = 'VB'
+                    vsam = ''
+                    keyoff, keylen = '', ''
+                    maxlrecl, avglrecl = '', ''
+                    cisize = ''
 
             elif flag == 1 and 'ATTRIBUTES' in line:
-                flag = 2
                 # Log().logger.debug('Attributes section found')
+                flag = 2
 
-            elif flag == 2:
+            elif flag == 2 and 'STATISTICS' not in line:
                 # Log().logger.debug('Analyzing attributes')
                 dataset_attributes = line.replace('-', '')
                 dataset_attributes = dataset_attributes.split()
@@ -107,18 +110,17 @@ class Listcat(object):
                     elif attr.startswith('NUMBERED'):
                         vsam = 'RR'
 
-                    #? Which method is best?
-                    # Re-initialization for the next dataset
-                    if 'STATISTICS' in line:
-                        self._data[dsn] = [
-                            recfm, vsam, keyoff, keylen, maxlrecl, avglrecl,
-                            cisize
-                        ]
-                        flag = 0
-                        break
+            # Re-initialization for the next dataset
+            elif flag == 2 and 'STATISTICS' in line:
+                self._data[dsn] = [
+                    recfm, vsam, keyoff, keylen, maxlrecl, avglrecl, cisize,
+                    catalog
+                ]
+                flag = 0
 
         if rc == 0:
             status = 'SUCCESS'
+            Log().logger.info('[listcat] CSV successfully generated: ' + self._file_path)
         #TODO No way to fail this at the moment
         else:
             status = 'FAILED'
@@ -130,28 +132,34 @@ class Listcat(object):
     def _write_csv(self):
         """
         """
-        rc = 0
-
         try:
-            #TODO analyze error below (commented out) to have the proper message for IOError
-            # with open(self._file_path, 'a') as fd:
             with open(Context().listcat_directory + '/listcat.csv', 'a') as fd:
                 writer = csv.writer(fd, delimiter=',')
+                # Writing column headers to CSV file
                 writer.writerow(self._headers)
+
+                # Writing records to CSV file
                 for key, value in self._data.items():
                     record = [key] + value
                     writer.writerow(record)
-        except IOError:
-            Log().logger.error('Issue writing to CSV file')
+            rc = 0
+        except OSError as e:
+            Log().logger.error('OSError: ' + str(e))
+            rc = -1
 
         return rc
 
     def generate_csv(self):
         """
         """
+        Log().logger.debug('[listcat] Starting Listcat CSV generation')
         self._read_txt()
         self._get_data_txt()
+
+        #TODO with the refactoring implement something to read the CSV first. Append and update if already exist, create and write if not
         self._write_csv()
+
+        Log().logger.debug('[listcat] Ending Listcat CSV generation')
 
     def read_csv(self):
         """Read the content of the listcat output file and store the result in a string.
@@ -178,8 +186,6 @@ class Listcat(object):
 
                     i += 1
             rc = 0
-
-            #     self._data = fd.read()
 
             # if self._data != None:
             #     Log().logger.debug('[listcat] Listcat file import successful')

@@ -26,3 +26,4 @@ class LCol(enum.Enum):
     MAXLRECL = 5
     AVGLRECL = 6
     CISIZE = 7
+    CATALOG = 8

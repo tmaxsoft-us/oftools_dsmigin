@@ -69,31 +69,37 @@ class CSV(object):
         rc = 0
 
         try:
-            if os.path.isfile(self._file_path):
-                self._backup()
-                self._data = Utils().read_file(self._file_path)
-
-                if self._data != None:
-                    for i in range(len(self._data)):
-                        if i == 0:
-                            rc = self._check_headers(self._data[i])
-                        else:
-                            record = DatasetRecord()
-                            record.columns = self._data[i]
-                            Context().records.append(record)
-
+            if Context().initialization:
+                Log().logger.info('[csv] Initializing file from template')
+                self.write()
             else:
-                if Context().initialization:
-                    Log().logger.info('[csv] Initializing file from template')
-                    self.write()
-                else:
-                    raise FileNotFoundError()
+                if os.path.isfile(self._file_path):
+                    self._backup()
+                    self._data = Utils().read_file(self._file_path)
 
+                    if self._data != None:
+                        for i in range(len(self._data)):
+                            if i == 0:
+                                rc = self._check_headers(self._data[i])
+                            else:
+                                record = DatasetRecord()
+                                record.columns = self._data[i]
+                                Context().records.append(record)
+                else:
+                    if os.path.isdir(self._file_path):
+                        raise IsADirectoryError()
+                    else:
+                        raise FileNotFoundError()
+
+        except IsADirectoryError:
+            Log().logger.error(
+                'IsADirectoryError: CSV specified is a directory: ' +
+                self._file_path)
         except FileNotFoundError:
             Log().logger.error(
                 'FileNotFoundError: No such file or directory: ' +
                 self._file_path)
-            Log().logger.info(
+            Log().logger.error(
                 '[csv] Please initialize dataset migration CSV file with --init option'
             )
             sys.exit(-1)
@@ -128,38 +134,38 @@ class CSV(object):
 
             Returns:
                 An integer, the return code of the method."""
-        if len(headers) == 1:
-            Log().logger.debug('[csv] List of dataset names only')
-            rc = 1
-        elif len(headers) < len(self._headers):
-            Log().logger.error('[csv] Missing headers')
-            rc = -1
-        elif len(headers) == len(self._headers):
-            for i in range(len(headers)):
-                header = headers[i].strip()
-                if header == self._headers[i]:
-                    rc = 0
-                else:
-                    Log().logger.error(
-                        '[csv] Typographical error on the header: ' + header)
-                    rc = -1
-                    break
-        else:
-            Log().logger.error('[csv] Too many headers specified')
-            rc = -1
+        try:
+            if len(headers) == 1:
+                Log().logger.debug('[csv] List of dataset names only')
+                rc = 0
+            elif len(headers) < len(self._headers):
+                issue_message = 'Missing headers'
+                raise SystemError()
+            elif len(headers) == len(self._headers):
+                for i in range(len(headers)):
+                    header = headers[i].strip()
+                    if header == self._headers[i]:
+                        rc = 0
+                    else:
+                        issue_message = 'Typographical error on the header: ' + header
+                        raise SystemError()
+            else:
+                issue_message = 'Too many headers'
+                raise SystemError()
 
-        if rc == 0:
-            Log().logger.debug('[csv] Headers correctly specified')
-        elif rc < 0:
+        except SystemError:
             Log().logger.error(
-                '[csv] Headers are not matching with the program definition')
+                '[csv] Headers are not matching with the program definition: ' +
+                issue_message)
             Log().logger.error('[csv] Input file:')
             Log().logger.error(headers)
             Log().logger.error('[csv] Program definition:')
             Log().logger.error(self._headers)
             sys.exit(-1)
 
-        return rc
+        else:
+            Log().logger.debug('[csv] Headers correctly specified')
+            return rc
 
     def write(self):
         """Write the changes on the dataset records to the CSV file.
@@ -171,23 +177,20 @@ class CSV(object):
 
             Returns:
                 An integer, the return code of the method."""
-        rc = 0
+        try:
+            with open(self._file_path, 'w') as fd:
+                csv_data = csv.writer(fd, delimiter=',')
+                # Writing column headers to CSV file
+                csv_data.writerow(self._headers)
 
-        with open(self._file_path, 'w') as fd:
-            csv_data = csv.writer(fd, delimiter=',')
-            # Writing column headers to CSV file
-            rc = csv_data.writerow(self._headers)
-            # Log().logger.debug(
-            #     '[csv] Return code of the call to the write method for the headers:'
-            #     + str(rc))
-
-            # Writing records to CSV file
-            for record in Context().records:
-                rc = csv_data.writerow(record.columns)
-                # Log().logger.debug(
-                #     '[csv] Return code of the call to the write method for the data:'
-                #     + str(rc))
-            #TODO Need a performance test
-            # rc = csv_data.writerows(Context().records)
+                # Writing records to CSV file
+                for record in Context().records:
+                    csv_data.writerow(record.columns)
+                #TODO Need a performance test
+                # rc = csv_data.writerows(Context().records)
+            rc = 0
+        except OSError as e:
+            Log().logger.error('OSError: ' + str(e))
+            rc = -1
 
         return rc

@@ -4,6 +4,7 @@
     """
 
 # Generic/Built-in modules
+# import argcomplete
 import argparse
 import sys
 import traceback
@@ -104,6 +105,13 @@ class Main(object):
 
         # Optional arguments
         optional.add_argument(
+            '--clear',
+            action='store_true',
+            dest='clear',
+            help='clear all the files generated during program execution',
+            required=False)
+
+        optional.add_argument(
             '-C',
             '--conversion',
             action='store_true',
@@ -112,13 +120,38 @@ class Main(object):
             'flag to modify the behavior of dsmigin, executes conversion only',
             required=False)
 
+        #? Should we have an encoding code option, but if not specified by default it will be encoding_code = 'US'
+
+        optional.add_argument(
+            '-e',
+            '--encoding_code',
+            action='store',
+            choices=['US'],
+            default='US',
+            dest='encoding_code',
+            help=
+            'encoding code for dataset migration, potential values: US. (default: US)',
+            metavar='CODE',
+            required=False,
+            type=str)
+
+        optional.add_argument(
+            '--enable_column',
+            action='store',
+            dest='column_names',
+            help=
+            'list of CSV columns to enable instead of the default value, separated with :. Supported columns: VOLSER, CATALOG',
+            metavar='COLUMN',
+            required=False,
+            type=str)
+
         optional.add_argument(
             '-g',
             '--generations',
             action='store',
             dest='generations',
             help=
-            'Specifically for GDG datasets, number of generations to be processed',
+            'number of generations to be processed, specifically for GDG datasets',
             metavar='INTEGER',
             required=False,
             type=int)
@@ -138,14 +171,15 @@ class Main(object):
             '--init',
             action='store_true',
             dest='init',
-            help='Initializes the CSV file and the working directory specified',
+            help='initializes the CSV file and the working directory specified',
             required=False)
 
         optional.add_argument(
             '--listcat-gen',
             action='store',
             dest='listcat_gen',
-            help='Generates a CSV file from a listcat text file',
+            help=
+            'appends datasets record from a text file to a CSV file for listcat information',
             metavar='FILE',
             required=False,
             type=str)
@@ -201,7 +235,7 @@ class Main(object):
             '-v',
             '--version',
             action='version',
-            help='show this version message and exit',
+            help='show the version message and exit',
             version='%(prog)s {version}'.format(version=__version__))
 
         # Do the parsing
@@ -209,6 +243,7 @@ class Main(object):
             parser.print_help(sys.stdout)
             sys.exit(0)
         try:
+            # argcomplete.autocomplete(parser)
             args = parser.parse_args()
         except argparse.ArgumentError as e:
             Log().logger.critical('ArgumentError: ' + str(e))
@@ -222,7 +257,7 @@ class Main(object):
                     raise TypeError()
         except TypeError:
             Log().logger.critical(
-                'TypeError: Invalid -c, --csv option: Expected .csv extension')
+                'TypeError: Invalid -c, --csv option: Must be .csv extension')
             sys.exit(-1)
 
         # Analyze missing optional arguments
@@ -231,7 +266,7 @@ class Main(object):
                 raise Warning()
         except Warning:
             Log().logger.warning(
-                '[listcat] Missing -i, --ip-address: Skipping dataset info retrieval from Mainframe'
+                'MissingArgumentWarning: Missing -i, --ip-address option: Skipping dataset information retrieval from Mainframe'
             )
 
         try:
@@ -239,19 +274,9 @@ class Main(object):
                 raise SystemError()
         except SystemError:
             Log().logger.critical(
-                'MissingArgumentError: -i, --ip-address option must be specified for dataset download from Mainframe'
+                'MissingArgumentError: Missing -i, --ip-address option: Must be specified for dataset download from Mainframe'
             )
             sys.exit(-1)
-
-        # Analyze if the argument number is positive
-        if args.number:
-            try:
-                if args.number <= 0:
-                    raise SystemError()
-            except:
-                Log().logger.critical(
-                    'SignError: Invalid -n, --number option: Must be positive')
-                sys.exit(-1)
 
         return args
 
@@ -267,13 +292,15 @@ class Main(object):
 
             Returns:
                 list -- List of jobs."""
+        Log().logger.debug('Creating jobs')
         jobs = []
         job_factory = JobFactory(storage_resource)
 
         try:
             if args.listcat:
-                Context().ip_address = args.ip_address
                 listcat = Listcat(Context().listcat_directory + '/listcat.csv')
+                Context().generations = args.generations
+                Context().ip_address = args.ip_address
                 Context().listcat = listcat
                 job = job_factory.create('listcat')
                 jobs.append(job)
@@ -283,7 +310,10 @@ class Main(object):
                 job = job_factory.create('ftp')
                 jobs.append(job)
             if args.migration:
-                Context().encoding_code = 'US'
+                columns = args.column_names.split(':')
+                for column in columns:
+                    Context().append_enable_column(column)
+                Context().encoding_code = args.encoding_code
                 Context().conversion = args.conversion
                 job = job_factory.create('migration')
                 jobs.append(job)
@@ -311,13 +341,12 @@ class Main(object):
         # Set log level and log oftools_dsmigin command as DEBUG
         Log().set_level(args.log_level)
         Log().logger.debug(' '.join((arg for arg in sys.argv)))
+        Log().logger.debug('Starting OpenFrame Tools Dataset Migration')
 
         # Initialize variables for program execution
         count_dataset = 0
         Context().initialization = args.init
         Context().max_datasets = args.number
-        #? This option might be necessary (and optional) only for listcat job, to write as many lines in the CSV file as necessary
-        Context().generations = args.generations
         Context().tag = args.tag
         Context().working_directory = args.working_directory
 
@@ -348,6 +377,7 @@ class Main(object):
                     if rc != 0:
                         # Skipping dataset
                         if rc == 1:
+                            Log().logger.debug('Skipping dataset: rc = 1')
                             continue
                         else:
                             Log().logger.error(
@@ -369,13 +399,21 @@ class Main(object):
                         Log().logger.info('Current dataset count: ' +
                                           str(count_dataset))
         except KeyboardInterrupt:
+            #? Should I put the full cleanup (commands just below) in here just in case? YES
             storage_resource.write()
+            # HERE
             raise KeyboardInterrupt()
 
         # rc = statistics.run()
         # if rc < 0:
         #     Log().logger.error(
         #         'An error occurred. Aborting statistics processing')
+
+        # Handle clear option
+        #TODO Code the Clear module
+        # if args.clear is True:
+        #     clear = Clear()
+        #     clear.run()
 
         # Need to clear context completely and close log at the end of the execution
         Context().clear_all()

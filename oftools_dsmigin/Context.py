@@ -57,10 +57,8 @@ class Context(object, metaclass=SingletonMeta):
     def __init__(self):
         """Initializes all attributes of the context.
             """
-
         # Required variables for program execution
         self._initialization = False
-        self._generations = 0
         self._max_datasets = 0
         self._tag = ''
 
@@ -79,9 +77,11 @@ class Context(object, metaclass=SingletonMeta):
         # Input parameters - different jobs
         self._ip_address = None
         self._listcat = None
+        self._generations = 0
         self._prefix = ''
 
-        self._conversion = False
+        self._enable_column_list = []
+        self._conversion = ''
         self._encoding_code = ''
 
         # Other
@@ -100,20 +100,8 @@ class Context(object, metaclass=SingletonMeta):
     def initialization(self, initialization):
         """Setter method for the attribute _initialization.
             """
-        self._initialization = initialization
-
-    @property
-    def generations(self):
-        """Getter method for the attribute _generations.
-            """
-        return self._generations
-
-    @generations.setter
-    def generations(self, generations):
-        """Setter method for the attribute _generations.
-            """
-        if generations is not None:
-            self._generations = generations
+        if initialization is not None:
+            self._initialization = initialization
 
     @property
     def max_datasets(self):
@@ -125,9 +113,18 @@ class Context(object, metaclass=SingletonMeta):
     def max_datasets(self, max_datasets):
         """Setter method for the attribute _max_datasets.
             """
-        if max_datasets is not None:
-            self._max_datasets = max_datasets
-    
+        try:
+            if max_datasets is not None:
+                # Analyze if the argument max_datasets is positive
+                if max_datasets > 0:
+                    self._max_datasets = max_datasets
+                else:
+                    raise SystemError()
+        except SystemError:
+            Log().logger.critical(
+                'SignError: Invalid -n, --number option: Must be positive')
+            sys.exit(-1)
+
     @property
     def tag(self):
         """Getter method for the attribute _tag.
@@ -199,6 +196,7 @@ class Context(object, metaclass=SingletonMeta):
         self._log_directory = self._working_directory + '/log'
 
         if self._initialization:
+            Log().logger.info('[context] Initializing working directory')
             Utils().create_directory(self._working_directory)
             Utils().create_directory(self._conversion_directory)
             Utils().create_directory(self._copybooks_directory)
@@ -209,13 +207,25 @@ class Context(object, metaclass=SingletonMeta):
 
         try:
             if os.path.isdir(self._working_directory) is True:
-                if os.path.isdir(self._log_directory) is False:
+                if os.path.isdir(self._log_directory) is True:
+                    Log().logger.debug(
+                        '[context] Proper dataset migration directory specified. Proceeding'
+                    )
+                else:
                     raise FileNotFoundError()
             else:
                 raise FileNotFoundError()
         except FileNotFoundError:
-            Log().logger.critical('FileNotFoundError: Not a dataset migration working directory: Please initialize it with the --init option:' + working_directory)
+            Log().logger.critical(
+                'FileNotFoundError: Please initialize the working directory with the --init option: Not a dataset migration working directory:'
+                + working_directory)
             sys.exit(-1)
+
+    @property
+    def records(self):
+        """Getter method for the attribute _records.
+            """
+        return self._records
 
     @property
     def ip_address(self):
@@ -232,13 +242,15 @@ class Context(object, metaclass=SingletonMeta):
                 # Analyze if the argument ip_address respect a valid format
                 status = Utils().analyze_ip_address(ip_address)
                 if status is True:
+                    Log().logger.debug(
+                        '[context] Proper ip address specified. Proceeding')
                     self._ip_address = ip_address
                 else:
                     raise SystemError()
         except SystemError:
             Log().logger.critical(
-                    'FormatError: Invalid -i, --ip-address option: Must respect either IPv4 or IPv6 standard format'
-                )
+                'FormatError: Invalid -i, --ip-address option: Must respect either IPv4 or IPv6 standard format'
+            )
             sys.exit(-1)
 
     @property
@@ -251,12 +263,37 @@ class Context(object, metaclass=SingletonMeta):
     def listcat(self, listcat):
         """Setter method for the attribute _listcat.
             """
-        self._listcat = listcat
+        if listcat is not None:
+            self._listcat = listcat
 
-        rc = self._listcat.read_csv()
-        if rc != 0:
-            Log().logger.warning('[listcat] Skipping listcat file data retrieval for VSAM datasets')
-            self._listcat = None
+            rc = self._listcat.read_csv()
+            if rc != 0:
+                Log().logger.warning(
+                    '[listcat] Skipping listcat file data retrieval for VSAM datasets'
+                )
+                self._listcat = {}
+
+    @property
+    def generations(self):
+        """Getter method for the attribute _generations.
+            """
+        return self._generations
+
+    @generations.setter
+    def generations(self, generations):
+        """Setter method for the attribute _generations.
+            """
+        try:
+            if generations is not None:
+                # Analyze if the argument generations is positive
+                if generations > 0:
+                    self._generations = generations
+                else:
+                    raise SystemError()
+        except SystemError:
+            Log().logger.critical(
+                'SignError: Invalid -g, --generations option: Must be positive')
+            sys.exit(-1)
 
     @property
     def prefix(self):
@@ -272,17 +309,15 @@ class Context(object, metaclass=SingletonMeta):
             self._prefix = prefix + '.'
 
     @property
-    def encoding_code(self):
-        """Getter method for the attribute _encoding_code.
+    def enable_column_list(self):
+        """Getter method for the attribute _enable_column_list.
             """
-        return self._encoding_code
+        return self._enable_column_list
 
-    @encoding_code.setter
-    def encoding_code(self, encoding_code):
-        """Setter method for the attribute _encoding_code.
+    def append_enable_column(self, column):
+        """Append method for the attribute _enable_column_list.
             """
-        if encoding_code is not None:
-            self._encoding_code = encoding_code
+        self._enable_column_list.append(column)
 
     @property
     def conversion(self):
@@ -294,13 +329,22 @@ class Context(object, metaclass=SingletonMeta):
     def conversion(self, conversion):
         """Setter method for the attribute _conversion.
             """
-        self._conversion = conversion
+        if conversion is not None:
+            if conversion is True:
+                self._conversion = ' -C '
 
     @property
-    def records(self):
-        """Getter method for the attribute _records.
+    def encoding_code(self):
+        """Getter method for the attribute _encoding_code.
             """
-        return self._records
+        return self._encoding_code
+
+    @encoding_code.setter
+    def encoding_code(self, encoding_code):
+        """Setter method for the attribute _encoding_code.
+            """
+        if encoding_code is not None:
+            self._encoding_code = encoding_code
 
     @property
     def full_timestamp(self):

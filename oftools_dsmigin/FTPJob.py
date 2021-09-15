@@ -54,52 +54,58 @@ class FTPJob(Job):
         unset_list = ('', ' ')
         skip_message = '[ftp] Skipping dataset: ' + record[Col.DSN.value] + ': '
 
-        if record[Col.IGNORE.value] == 'Y':
-            Log().logger.info(skip_message + 'IGNORE set to "Y"')
-            rc = 1
-        elif record[Col.LISTCATDATE.value] == '':
-            Log().logger.debug(skip_message + 'LISTCATDATE not set')
-            rc = 1
-        elif record[Col.FTP.value] == 'N':
-            Log().logger.debug(skip_message + 'FTP set to "N"')
-            rc = 1
-        elif record[Col.FTP.value] in ('', 'Y', 'F'):
-            Log().logger.debug('[ftp] FTP set to "' + record[Col.FTP.value] +
-                               '"')
+        if record[Col.FTP.value] == 'F':
+            Log().logger.debug('[ftp] FTP set to "F"')
             rc = 0
-
-        if rc == 0:
-            if record[Col.VOLSER.value] == 'Pseudo':
-                Log().logger.info(skip_message + 'VOLSER set to "Pseudo"')
+        
+        else:
+            if record[Col.IGNORE.value] == 'Y':
+                Log().logger.info(skip_message + 'IGNORE set to "Y"')
                 rc = 1
-            elif record[Col.VOLSER.value] == 'Migrated':
-                Log().logger.info(skip_message + 'VOLSER set to "Migrated"')
+            elif record[Col.LISTCATDATE.value] == '':
+                Log().logger.debug(skip_message + 'LISTCATDATE not set')
                 rc = 1
-
-        if rc == 0:
-            if record[Col.DSORG.value] == 'PO' or record[
-                    Col.DSORG.value] == 'PS':
+            elif record[Col.FTP.value] == 'N':
+                Log().logger.debug(skip_message + 'FTP set to "N"')
+                rc = 1
+            elif record[Col.FTP.value] in ('', 'Y'):
+                Log().logger.debug('[ftp] FTP set to "' +
+                                   record[Col.FTP.value] + '"')
                 rc = 0
-            elif record[Col.DSORG.value] == 'VSAM':
-                if Context().prefix != '':
-                    Log().logger.debug(
-                        '[ftp] Prefix correctly specified for VSAM dataset download'
-                    )
-                    rc = 0
-                else:
-                    Log().logger.warning(
-                        skip_message +
-                        'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
-                    )
+
+            if rc == 0:
+                if record[Col.VOLSER.value] == 'Pseudo':
+                    Log().logger.info(skip_message + 'VOLSER set to "Pseudo"')
+                    rc = 1
+                elif record[Col.VOLSER.value] == 'Migrated':
+                    Log().logger.info(skip_message + 'VOLSER set to "Migrated"')
                     rc = 1
 
-            elif record[Col.DSORG.value] in unset_list:
-                Log().logger.warning(skip_message + 'Missing DSORG parameter')
-                rc = 1
+            if rc == 0:
+                if record[Col.DSORG.value] == 'PO' or record[
+                        Col.DSORG.value] == 'PS':
+                    rc = 0
+                elif record[Col.DSORG.value] == 'VSAM':
+                    if Context().prefix != '':
+                        Log().logger.debug(
+                            '[ftp] Prefix correctly specified for VSAM dataset download'
+                        )
+                        rc = 0
+                    else:
+                        Log().logger.warning(
+                            skip_message +
+                            'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
+                        )
+                        rc = 1
 
-            else:
-                Log().logger.error(skip_message + 'Invalid DSORG parameter')
-                rc = 1
+                elif record[Col.DSORG.value] in unset_list:
+                    Log().logger.warning(skip_message +
+                                         'Missing DSORG parameter')
+                    rc = 1
+
+                else:
+                    Log().logger.error(skip_message + 'Invalid DSORG parameter')
+                    rc = 1
 
         if rc == 0:
             Log().logger.debug('[ftp] Proceeding, dataset eligible: ' +
@@ -136,6 +142,27 @@ class FTPJob(Job):
 
         return rc
 
+    def _download_tape(self, record, rdwftp):
+        """
+            """
+        dsn = record[Col.DSN.value]
+        ftp_command = rdwftp + '\nget ' + dsn
+        stdout, _, rc = Utils().execute_ftp_command(ftp_command)
+
+        if rc == 0:
+            ftp_result = stdout.splitlines()
+            if len(ftp_result) > 2:
+                fields = ftp_result[3].split()
+                if len(fields) > 5:
+                    if fields[5] == 'FIXrecfm':
+                        record[Col.RECFM.value] = 'FB'
+                        record[Col.LRECL.value] = fields[6]
+                    elif fields[5] == 'VARrecfm':
+                        record[Col.RECFM.value] = 'VB'
+                        record[Col.LRECL.value] = fields[6]
+
+        return rc
+
     def _download(self, record):
         """Main method for dataset download from mainframe to Linux server.
 
@@ -161,6 +188,8 @@ class FTPJob(Job):
             rc = self._download_PO(record[Col.DSN.value], rdwftp)
         elif record[Col.DSORG.value] == 'VSAM':
             rc = self._download_VSAM(record[Col.DSN.value], rdwftp)
+        elif record[Col.VOLSER.value] == 'Tape':
+            rc = self._download_tape(record, rdwftp)
 
         elapsed_time = time.time() - start_time
 
