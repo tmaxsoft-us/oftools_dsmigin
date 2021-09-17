@@ -108,7 +108,7 @@ class Main(object):
             '--clear',
             action='store_true',
             dest='clear',
-            help='clear all the files generated during program execution',
+            help=argparse.SUPPRESS,
             required=False)
 
         optional.add_argument(
@@ -119,8 +119,6 @@ class Main(object):
             help=
             'flag to modify the behavior of dsmigin, executes conversion only',
             required=False)
-
-        #? Should we have an encoding code option, but if not specified by default it will be encoding_code = 'US'
 
         optional.add_argument(
             '-e',
@@ -369,56 +367,62 @@ class Main(object):
         jobs = self._create_jobs(args, storage_resource)
 
         try:
-            for i in range(len(Context().records)):
-                record = Context().records[i].columns
+            if len(jobs) > 0:
 
-                # Run jobs
-                for job in jobs:
-                    rc = job.run(record)
-                    if rc != 0:
-                        # Skipping dataset
-                        if rc == 1:
-                            Log().logger.debug('Skipping dataset: rc = 1')
-                            continue
+                for i in range(len(Context().records)):
+                    record = Context().records[i].columns
+
+                    for job in jobs:
+                        rc = job.run(record)
+                        if rc != 0:
+                            if rc == 1:
+                                Log().logger.debug('Skipping dataset: rc = 1')
+                                continue
+                            else:
+                                Log().logger.error(
+                                    'An error occurred. Aborting program execution'
+                                )
+                                break
+
+                    if rc == 0:
+                        count_dataset += 1
+
+                        if Context().max_datasets != 0:
+                            Log().logger.info('Current dataset count: ' +
+                                              str(count_dataset) + '/' +
+                                              str(Context().max_datasets))
+                            if count_dataset >= Context().max_datasets:
+                                Log().logger.info('Limit of dataset reached')
+                                Log().logger.info(
+                                    'Terminating program execution')
+                                break
                         else:
-                            Log().logger.error(
-                                'An error occurred. Aborting program execution')
-                            break
+                            Log().logger.info('Current dataset count: ' +
+                                              str(count_dataset))
 
-                if rc == 0 and len(jobs) > 0:
-                    count_dataset += 1
+                # rc = statistics.run()
+                # if rc < 0:
+                #     Log().logger.error(
+                #         'An error occurred. Aborting statistics processing')
 
-                    if Context().max_datasets != 0:
-                        Log().logger.info('Current dataset count: ' +
-                                          str(count_dataset) + '/' +
-                                          str(Context().max_datasets))
-                        if count_dataset >= Context().max_datasets:
-                            Log().logger.info('Limit of dataset reached')
-                            Log().logger.info('Terminating program execution')
-                            break
-                    else:
-                        Log().logger.info('Current dataset count: ' +
-                                          str(count_dataset))
-
-            # rc = statistics.run()
-            # if rc < 0:
-            #     Log().logger.error(
-            #         'An error occurred. Aborting statistics processing')
-
-            # Handle clear option
-            #TODO Code the Clear module
-            # if args.clear is True:
-            #     clear = Clear()
-            #     clear.run()
+                # Handle clear option
+                #TODO Code the Clear module
+                # if args.clear is True:
+                #     clear = Clear()
+                #     clear.run()
 
         except KeyboardInterrupt:
             storage_resource.write()
+            storage_resource.format()
+
             Context().clear_all()
             Log().close_file()
             Log().close_stream()
+
             raise KeyboardInterrupt()
 
         # Need to clear context completely and close log at the end of the execution
+        storage_resource.format()
         Context().clear_all()
         Log().close_file()
         Log().close_stream()

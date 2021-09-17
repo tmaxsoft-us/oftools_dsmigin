@@ -7,6 +7,7 @@
       records[Col.DSN.value] = 0"""
 
 # Generic/Built-in modules
+import aenum
 import enum
 
 # Third-party modules
@@ -41,3 +42,34 @@ class Col(enum.Enum):
     DSMIGIN = 20
     DSMIGINDATE = 21
     DSMIGINDURATION = 22
+
+
+class Width(aenum.Enum):
+    """Just an enumeration of all the column widths we need in the migration CSV file.
+        """
+
+    _settings_ = aenum.NoAlias
+
+    DSN = 45
+    COPYBOOK = 10
+    RECFM = 5
+    LRECL = 5
+    BLKSIZE = 8
+    DSORG = 5
+    VOLSER = 8
+    CATALOG = 18
+    VSAM = 4
+    KEYOFF = 6
+    KEYLEN = 6
+    MAXLRECL = 8
+    AVGLRECL = 8
+    CISIZE = 8
+    IGNORE = 6
+    LISTCAT = 7
+    LISTCATDATE = 11
+    FTP = 3
+    FTPDATE = 8
+    FTPTIME = 8
+    DSMIGIN = 7
+    DSMIGINDATE = 11
+    DSMIGINTIME = 11

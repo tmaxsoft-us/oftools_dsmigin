@@ -20,7 +20,7 @@ import sys
 from .Context import Context
 from .DatasetRecord import DatasetRecord
 from .Log import Log
-from .MigrationEnum import Col
+from .MigrationEnum import Col, Width
 from .Utils import Utils
 
 
@@ -46,16 +46,16 @@ class CSV(object):
     def __init__(self, csv_path):
         """Initializes all attributes.
             """
-        self._headers = [column.name for column in Col]
-        self._current_headers = []
+        self._headers_definition = [column.name for column in Col]
+        self._headers_current = []
+
+        self._column_widths = [width.value for width in Width]
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
 
         file_name = self._file_path.rsplit('/', 1)[1]
         self._root_file_name = file_name.split('.')[0]
-
-        self._data = None
 
         self._read()
 
@@ -76,29 +76,35 @@ class CSV(object):
             else:
                 if os.path.isfile(self._file_path):
                     self._backup()
-                    self._data = Utils().read_file(self._file_path)
+                    data = Utils().read_file(self._file_path)
 
-                    if self._data != None:
-                        for i in range(len(self._data)):
+                    if data != None:
+                        for i in range(len(data)):
                             if i == 0:
-                                rc = self._check_headers(self._data[i])
+                                rc = self._check_headers(data[i])
                             else:
+                                if rc != 0:
+                                    self._update_columns(rc, data[i])
+                                
                                 record = DatasetRecord()
-                                record.columns = self._data[i]
+                                record.columns = data[i]
                                 Context().records.append(record)
-
-                        if rc != 0:
-                            self._update_columns(rc)
                 else:
                     if os.path.isdir(self._file_path):
                         raise IsADirectoryError()
                     else:
                         raise FileNotFoundError()
 
+        except IndexError:
+            Log().logger.error(
+                'IndexError: Too many elements in the line number ' + str(i) +
+                ' of the CSV file')
+            sys.exit(-1)
         except IsADirectoryError:
             Log().logger.error(
                 'IsADirectoryError: CSV specified is a directory: ' +
                 self._file_path)
+            sys.exit(-1)
         except FileNotFoundError:
             Log().logger.error(
                 'FileNotFoundError: No such file or directory: ' +
@@ -108,7 +114,7 @@ class CSV(object):
             )
             sys.exit(-1)
 
-        finally:
+        else:
             return rc
 
     def _backup(self):
@@ -142,14 +148,14 @@ class CSV(object):
             if len(headers) == 1:
                 Log().logger.debug('[csv] List of dataset names only')
                 rc = 0
-            elif len(headers) < len(self._headers):
+            elif len(headers) < len(self._headers_definition):
                 issue_message = 'Missing headers'
-                self._current_headers = headers
+                self._headers_current = headers
                 rc = 1
-            elif len(headers) == len(self._headers):
+            elif len(headers) == len(self._headers_definition):
                 for i in range(len(headers)):
                     header = headers[i].strip()
-                    if header == self._headers[i]:
+                    if header == self._headers_definition[i]:
                         rc = 0
                     else:
                         issue_message = 'Typographical error on the header: ' + header
@@ -157,7 +163,7 @@ class CSV(object):
                         break
             else:
                 issue_message = 'Extra headers'
-                self._current_headers = headers
+                self._headers_current = headers
                 rc = 2
 
             if rc != 0:
@@ -173,34 +179,29 @@ class CSV(object):
             Log().logger.error('[csv] Input file:')
             Log().logger.error(headers)
             Log().logger.error('[csv] Program definition:')
-            Log().logger.error(self._headers)
+            Log().logger.error(self._headers_definition)
             sys.exit(-1)
 
         else:
             return rc
 
-    def _update_columns(self, update_type):
+    def _update_columns(self, update_type, record):
         """
             """
-        diff_headers = list(set(self._headers) - set(self._current_headers))
+        diff_headers = list(
+            set(self._headers_definition) - set(self._headers_current))
 
         for header in diff_headers:
             # Missing headers
             if update_type == 1:
-                Log().logger.info('[csv] Updating columns: Adding ' + header)
-                index = self._headers.index(header)
-                for i in range(len(Context().records)):
-                    record = Context().records[i].columns
-                    record.insert(index, '')
+                Log().logger.debug('[csv] Updating columns: Adding ' + header)
+                index = self._headers_definition.index(header)
+                record.insert(index, '')
             # Extra headers
             elif update_type == 2:
-                Log().logger.info('[csv] Updating columns: Removing ' + header)
-                index = self._current_headers.index(header)
-                for i in range(len(Context().records)):
-                    record = Context().records[i].columns
-                    record.pop(index)
-
-        self.write()
+                Log().logger.debug('[csv] Updating columns: Removing ' + header)
+                index = self._headers_current.index(header)
+                record.pop(index)
 
     def write(self):
         """Write the changes on the dataset records to the CSV file.
@@ -216,13 +217,46 @@ class CSV(object):
             with open(self._file_path, 'w') as fd:
                 csv_data = csv.writer(fd, delimiter=',')
                 # Writing column headers to CSV file
-                csv_data.writerow(self._headers)
+                csv_data.writerow(self._headers_definition)
 
                 # Writing records to CSV file
                 for record in Context().records:
                     csv_data.writerow(record.columns)
                 #TODO Need a performance test
                 # rc = csv_data.writerows(Context().records)
+            rc = 0
+        except OSError as e:
+            Log().logger.error('OSError: ' + str(e))
+            rc = -1
+
+        return rc
+
+    def format(self):
+        """
+            """
+        try:
+            with open(self._file_path, 'w') as fd:
+                csv_data = csv.writer(fd, delimiter=',')
+
+                # Formatting column headers to CSV file
+                Log().logger.debug(
+                    '[csv] Formatting file: Adding trailing spaces to headers')
+                for i in range(len(self._headers_definition)):
+                    if len(self._headers_definition[i]
+                          ) < self._column_widths[i]:
+                        self._headers_definition[i] = self._headers_definition[
+                            i].ljust(self._column_widths[i])
+                csv_data.writerow(self._headers_definition)
+
+                # Formatting records to CSV file
+                Log().logger.debug(
+                    '[csv] Formatting file: Adding trailing spaces to records')
+                for dataset_record in Context().records:
+                    record = dataset_record.columns
+                    for i in range(len(record)):
+                        if len(record[i]) < self._column_widths[i]:
+                            record[i] = record[i].ljust(self._column_widths[i])
+                    csv_data.writerow(record)
             rc = 0
         except OSError as e:
             Log().logger.error('OSError: ' + str(e))
