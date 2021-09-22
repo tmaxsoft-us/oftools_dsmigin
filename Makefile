@@ -8,19 +8,33 @@ install:
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
 
+install_diff:
+	python3 setup.py bdist_wheel
+	python3 -m pip install dist/*.whl
+
 install_user:
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl --user
 
 uninstall:
-	rm -r build dist oftools_dsmigin.egg-info
 	pip3 uninstall -y oftools-dsmigin
+	rm -r build dist oftools_dsmigin.egg-info
+
+uninstall_diff:
+	python3 -m pip uninstall -y oftools-dsmigin
+	rm -r build dist oftools_dsmigin.egg-info
 
 reinstall:
-	rm -r build dist oftools_dsmigin.egg-info
 	pip3 uninstall -y oftools-dsmigin
+	rm -r build dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
+
+reinstall_diff:
+	python3 -m pip uninstall -y oftools-dsmigin
+	rm -r build dist oftools_dsmigin.egg-info
+	python3 setup.py bdist_wheel
+	python3 -m pip install dist/*.whl
 
 upload:
 	python3 setup.py sdist upload -r pypi
@@ -36,8 +50,10 @@ yapf:
 
 test:
 	pytest --color=yes -v -c tests/pytest.ini tests/unit/
+# Optional arguments:
+# --maxfail = <num> : Stop test suite after n test failures
 
 coverage:
-	coverage run --source=oftools_compile -m pytest --color=yes -v -s
+	coverage run --source=oftools_dsmigin -m pytest --color=yes -v -s
 	coverage report
 	
