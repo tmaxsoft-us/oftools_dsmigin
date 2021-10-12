@@ -3,11 +3,9 @@
 """This modules runs all functions related to the CSV file.
 
     Typical usage example:
-      csv = CSV(csv_path)
-      csv.backup()
-      csv.read()
-      csv.write()
-"""
+        csv = CSV(csv_path)
+        csv.write()
+    """
 
 # Generic/Built-in modules
 import csv
@@ -28,23 +26,25 @@ class CSV(object):
     """A class used to manipulate the CSV file , read and write tasks but also backup and other smaller features.
 
         Attributes:
-            _column_names: A list, the names of the different columns of the CSV file. 
-            _work_directory: A string, working directory for the program execution.
-            _file_path: A string, absolute path to the CSV file.
-            _file_name: A string, the full name of the CSV file.
-            _root_file_name: A string, the name of the CSV file without extension.
-            _timestamp: A string, the date and time of execution of the program in a certain format.
-            _records: A 2D-list, the elements of the CSV file containing all the dataset data.
+            _headers_definition {list} -- List to store the headers from the program definition.
+            _headers_current {list} -- List to store the current status of the headers, extracted from the CSV file.
+            _columns_widths {list} -- List to store the width of each column of the CSV file.
+ 
+            _file_path {string} -- Absolute path to the CSV file.
+            _root_file_name {string} -- Name of the CSV file, excluding extension.
 
         Methods:
-            __init__(): Initializes all attributes.
-            _check_column_headers(headers): Compare column headers in the CSV file to model in the program.
-            read(): Read the content of the CSV file and store the result in a list.
-            write(records): Write the changes on the dataset records to the CSV file.
-            backup(): Create a backup of the CSV file in a dedicated directory under the work directory."""
+            __init__(csv_path) -- Initializes all attributes of the class.
+            _read() -- Reads the content of the CSV file and store the result in a list.
+            _backup() -- Creates a backup of the CSV file.
+            _check_column_headers(headers) -- Compares column headers in the CSV file to a definition in the program.
+            _update_columns(update_type, record) -- Add or remove columns from each dataset migration record.
+            write() -- Writes the dataset migration records changes to the CSV file.
+            format() --Format CSV columns adding trailing spaces.
+        """
 
     def __init__(self, csv_path):
-        """Initializes all attributes.
+        """Initializes all attributes of the class.
             """
         self._headers_definition = [column.name for column in Col]
         self._headers_current = []
@@ -62,11 +62,16 @@ class CSV(object):
     def _read(self):
         """Reads the content of the CSV file an store the data in a list.
 
-            First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list records. 
+            First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list Context().records. 
 
             Returns:
-                A 2D-list, the datasets data extracted from the CSV file."""
-
+                integer -- Return code of the method.
+            
+            Raises:
+                IndexError -- Exception is raised if there is too many elements in a given line.
+                IsADirectoryError -- Exception is raised if the given CSV is not a file but a directory.
+                FileNotFoundError -- Exception is raised if the CSV file is not found at the given location.
+            """
         rc = 0
 
         try:
@@ -85,8 +90,8 @@ class CSV(object):
                             else:
                                 if rc != 0:
                                     self._update_columns(rc, data[i])
-                                
-                                record = DatasetRecord()
+
+                                record = DatasetRecord(Col)
                                 record.columns = data[i]
                                 Context().records.append(record)
                 else:
@@ -120,11 +125,11 @@ class CSV(object):
     def _backup(self):
         """Creates a backup of the CSV file.
 
-            Pattern for backup file naming: name_tag_timestamp_bckp.csv. This method make sure that the backup folder already exist before creating the first backup. It then copy the CSV file file to the target directory. Save the backup file in a dedicated directory under the working directory.
-            # Naming convention for the backup files
+            Pattern for backup file naming: name_tag_timestamp_bckp.csv. This method copies the CSV file under the backup directory, which is under the working directory.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         backup_file_name = self._root_file_name + Context().tag + '_' + Context(
         ).full_timestamp + '.csv'
         backup_file_path = Context(
@@ -135,15 +140,19 @@ class CSV(object):
         return rc
 
     def _check_headers(self, headers):
-        """Compares column headers in the CSV file to model in the program.
+        """Compares column headers in the CSV file to a definition in the program.
 
-            First, this method checks if the number of columns match, and then if the column headers match as well. If that is not the case, it sends an error message and shows the program definition (column headers model) to the user.
+            First, this method checks if the number of columns match, and then if the column headers match as well. If that is not the case, it sends an error message and shows the program definition to the user.
 
-            Args:
-                headers: A list, headers of the columns extracted from the file.
+            Arguments:
+                headers {list} -- Columns headers extracted from the CSV file.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+                
+            Raises:
+                SystemError -- Exception is raised if there is typo on one of the headers.
+            """
         try:
             if len(headers) == 1:
                 Log().logger.debug('[csv] List of dataset names only')
@@ -186,7 +195,11 @@ class CSV(object):
             return rc
 
     def _update_columns(self, update_type, record):
-        """
+        """Add or remove columns from each dataset migration record.
+
+            Arguments:
+                update_type {integer} -- Number to know if the CSV file needs more or less headers.
+                record {list} -- CSV record currently being processed.
             """
         diff_headers = list(
             set(self._headers_definition) - set(self._headers_current))
@@ -194,25 +207,26 @@ class CSV(object):
         for header in diff_headers:
             # Missing headers
             if update_type == 1:
-                Log().logger.debug('[csv] Updating columns: Adding ' + header)
+                Log().logger.info('[csv] Updating columns: Adding ' + header)
                 index = self._headers_definition.index(header)
                 record.insert(index, '')
             # Extra headers
             elif update_type == 2:
-                Log().logger.debug('[csv] Updating columns: Removing ' + header)
+                Log().logger.info('[csv] Updating columns: Removing ' + header)
                 index = self._headers_current.index(header)
                 record.pop(index)
 
     def write(self):
-        """Write the changes on the dataset records to the CSV file.
+        """Writes the dataset migration records changes to the CSV file.
 
             Opens the CSV file, writes the headers in the first row and then writes the data from the records.
 
-            Args:
-                records: A 2D-list, dataset data after all the changes applied in the program execution.
-
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+                
+            Raises:
+                OSError -- Exception is raised if there is an issue finding or opening the file.
+            """
         try:
             with open(self._file_path, 'w') as fd:
                 csv_data = csv.writer(fd, delimiter=',')
@@ -232,13 +246,18 @@ class CSV(object):
         return rc
 
     def format(self):
-        """
+        """Format CSV columns adding trailing spaces.
+
+            To ease reading and analyzing the file the columns are properly aligned based on an enumeration listing the width for each column.
+
+            Raises:
+                OSError -- Exception is raised if there is an issue finding or opening the file.
             """
         try:
             with open(self._file_path, 'w') as fd:
                 csv_data = csv.writer(fd, delimiter=',')
 
-                # Formatting column headers to CSV file
+                # Formatting column headers in CSV file
                 Log().logger.debug(
                     '[csv] Formatting file: Adding trailing spaces to headers')
                 for i in range(len(self._headers_definition)):
@@ -248,7 +267,7 @@ class CSV(object):
                             i].ljust(self._column_widths[i])
                 csv_data.writerow(self._headers_definition)
 
-                # Formatting records to CSV file
+                # Formatting records in CSV file
                 Log().logger.debug(
                     '[csv] Formatting file: Adding trailing spaces to records')
                 for dataset_record in Context().records:

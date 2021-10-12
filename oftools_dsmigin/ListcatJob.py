@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""""Module to run the Listcat Job.
+""""This module runs the Listcat Job.
 
     Typical usage example:
-      job = ListcatJob(storage_resource)
-      job.run()
-"""
+        job = ListcatJob(storage_resource)
+        job.run()
+    """
 
 # Generic/Built-in modules
 
@@ -13,7 +13,6 @@
 
 # Owned modules
 from .Context import Context
-from .DatasetRecord import DatasetRecord
 from .GDG import GDG
 from .Job import Job
 from .ListcatEnum import LCol
@@ -25,27 +24,31 @@ from .Utils import Utils
 class ListcatJob(Job):
     """A class used to run the Listcat Job.
 
-        It handles both dataset info retrieval from the Mainframe as well as the VSAM dataset info retrieval from a listcat file.
+        This class contains a run method that executes all the steps of the job. It handles both dataset info retrieval from the Mainframe as well as the VSAM dataset info retrieval from a listcat file.
         
         Attributes:
             Inherited from Job module.
 
         Methods:
-            analyze(record) -- Assesses listcat eligibility.
-            get_dataset_info(record) -- Executes the FTP command on Mainframe to retrieve dataset info.
-            run(record) -- Performs all the steps to exploit Mainframe info, the provided listcat file and update the CSV file accordingly."""
+            _analyze(record) -- Assesses listcat eligibility.
+            _recall(dataset_name) -- Executes FTP command to make dataset available to download.
+            _get_from_mainframe(record) -- Executes the FTP command on Mainframe to retrieve dataset info.
+            _get_from_file(record) -- Reads the listcat CSV file to retrieve dataset info.
+            run(record) -- Performs all the steps to exploit Mainframe info, the provided listcat file and updates the CSV file accordingly.
+        """
 
     def _analyze(self, record):
         """Assesses listcat eligibility.
 
-            This method double check multiple parameters in the record columns to make sure that the listcat job can proceed without error:
+            This method double check multiple parameters in the migration dataset records to make sure that the given dataset listcat can be processed without error:
                 - check IGNORE and LISTCAT status
 
             Arguments:
-                record {list} -- List of dataset parameters.
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                integer -- Return code of the method."""
+                integer -- Return code of the method.
+            """
         Log().logger.debug('[listcat] Assessing dataset eligibility: ' +
                            record[Col.DSN.value])
         skip_message = '[listcat] Skipping dataset: ' + record[
@@ -78,13 +81,14 @@ class ListcatJob(Job):
     def _recall(self, dataset_name):
         """Executes FTP command to make dataset available to download.
 
-            If a dataset has 'Migrated' as VOLSER parameter, the program executes this recall method just to open the diretory containing the dataset to trigger download execution from the mainframe.
+            If a dataset has VOLSER set to 'Migrated', the program executes this recall method just to open the diretory containing the dataset to trigger download execution from the mainframe.
 
-            Args:
-                record: A list, the dataset data to execute the recall using the DSN.
+            Arguments:
+                dataset_name {string} -- Dataset name.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         Log().logger.info('[listcat] Recalling migrated dataset: ' +
                           dataset_name)
         ftp_command = 'cd ' + dataset_name
@@ -99,10 +103,11 @@ class ListcatJob(Job):
             It executes the ftp command and then the ls command on Mainframe to retrieve general info about dataset such as RECFM, LRECL, BLKSIZE, DSORG and VOLSER. It uses the submethod formatting_dataset_info to parse the output.
 
             Arguments:
-                record {list} -- List of dataset parameters.
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                integer -- Return code of the method."""
+                integer -- Return code of the method.
+            """
         Log().logger.info('[listcat] Retrieving dataset info from Mainframe: ' +
                           record[Col.DSN.value])
 
@@ -163,8 +168,16 @@ class ListcatJob(Job):
         return rc
 
     def _get_from_file(self, record):
-        """
-        """
+        """Reads the listcat CSV file to retrieve dataset info.
+
+            First, this method search for the dataset in the listcat CSV file. If it finds the dataset, it updates the corresponding migration record. This method is used only for VSAM datasets.
+
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
+
+            Returns:
+                integer -- Return code of the method.
+            """
         dsn = record[Col.DSN.value]
 
         #? Handle FileNotFound before doing that, because tried to access .keys() on a NoneType object is raising an exception
@@ -194,15 +207,16 @@ class ListcatJob(Job):
         return rc
 
     def run(self, record):
-        """Performs all the steps to exploit Mainframe info, the provided listcat file and update the CSV file accordingly.
+        """Performs all the steps to exploit Mainframe info, the provided listcat file and updates the migration records accordingly.
 
-            It first analyzes if the listcat job can run for the given dataset, then it executes the FTP command to get the dataset info from the Mainframe and retrieves data from a listcat file. Finally, it writes the changes to the CSV file.
+            It first run the analyze method to check if the given dataset is eligible for listcat. Then it executes the FTP command to get the dataset info from the Mainframe and retrieves data from a listcat file, this last step being for VSAM datasets only. Finally, it writes the changes to the CSV file.
 
             Arguments:
-                record {list} -- List of dataset parameters.
+                record {list} -- The given migration record containing dataset info.
 
             Returns:  
-                integer -- Return code of the job."""
+                integer -- Return code of the job.
+            """
         Log().logger.debug('[listcat] Starting Job')
         rc1, rc2 = 0, 0
 

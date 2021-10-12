@@ -7,7 +7,9 @@
     can be found here.
 
     Typical usage example:
-        Context().tag = args.tag"""
+        Context().tag = args.tag
+        Context().clear_all()
+    """
 
 # Generic/Built-in modules
 import datetime
@@ -35,24 +37,37 @@ class Context(object, metaclass=SingletonMeta):
     """A class used as a parameter library for the execution of the program.
 
         Attributes:
-            _migration_type: A string, either 'C' or 'G' for generation or conversion only migration type.
-            _encoding_code: A string, specifies to what ASCII characters the EBCDIC two-byte data should be converted.
-            _number: An integer, the number of datasets to download in the current execution of oftools_dsmigin.
-            _ip_address: A string, the ip address of the mainframe to connect to for the FTP execution.
-            _listcat_result: A list, the name of the text file(s) that contains the listcat command result.
-            _tag: A string, the tag option used by the user.
-            _today_date: A string, the date of today respecting a certain format.
+            _initialization {boolean} --
+            _max_datasets {integer} -- The number of datasets to process in the current execution of oftools_dsmigin.
+            _tag {string} -- The tag option specified by the user.
 
-            _conversion_directory: A string, located under the working directory, this directory contains all converted datasets 
-                that are cleared after each migration (useless files).
-            _copybook_directory: A string, the location of the copybook directory tracked with git.
-            _dataset_directory: A string, located under the working directory, this directory contains all downloaded datasets.
-            _log_directory: A string, located under the working directory, this directory contains the logs of each execution of 
-                oftools_dsmigin.
-            _working_directory: A string, working directory for the program execution.
+            _conversion_directory {string} -- Absolute path of the conversion directory, located under the working directory. It contains all converted datasets that are cleared after each migration (useless files).
+            _copybooks_directory {string} -- Absolute path of the copybooks directory, located under the working directory.
+            _csv_backups_directory {string} --
+            _datasets_directory {string} -- Absolute path of the datasets directory, located under the working directory. It contains all the downloaded datasets.
+            _listcat_directory {string} --
+            _log_directory {string} -- Absolute path of the log directory, located under the working directory. It contains the logs of each execution of oftools_dsmigin.
+            _working_directory {string} -- Absolute path of the working directory.
+
+            _records {list} --
+
+            _ip_address {string} -- The ip address of the mainframe to connect to for the Listcat and FTP executions.
+            _listcat {Listcat object} --
+            _generations {integer} --
+            _prefix {string} --
+
+            _enable_column_list {list} --
+            _conversion {string} -- If the user specifies the conversion flag, it changes from '' to 'C' to perform conversion only migration type.
+            _encoding_code {string} -- It specifies to what ASCII characters the EBCDIC two-byte data should be converted.
+
+            _full_timestamp {string} -- The date of today respecting a certain format, including date and time.
+            _timestamp {string} -- The date of today respecting a certain format, including date only.
+            _init_pwd {string} -- The absolute path to the directory where the command has been executed.
 
         Methods:
-            __init__(): Initializes all attributes of the context."""
+            __init__() -- Initializes all attributes of the context.
+            clear_all() -- Clears context completely at the end of the program execution.
+        """
 
     def __init__(self):
         """Initializes all attributes of the context.
@@ -93,6 +108,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def initialization(self):
         """Getter method for the attribute _initialization.
+
+            Returns:
+                boolean -- the value for _initialization.
             """
         return self._initialization
 
@@ -106,16 +124,21 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def max_datasets(self):
         """Getter method for the attribute _max_datasets.
+
+            Returns:
+                integer -- the value for _max_datasets.
             """
         return self._max_datasets
 
     @max_datasets.setter
     def max_datasets(self, max_datasets):
         """Setter method for the attribute _max_datasets.
+
+            Raises:
+                SystemError -- Exception is raised if max_datasets is negative.
             """
         try:
             if max_datasets is not None:
-                # Analyze if the argument max_datasets is positive
                 if max_datasets > 0:
                     self._max_datasets = max_datasets
                 else:
@@ -128,6 +151,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def tag(self):
         """Getter method for the attribute _tag.
+
+            Returns:
+                string -- the value for _tag.
             """
         return self._tag
 
@@ -141,42 +167,60 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def conversion_directory(self):
         """Getter method for the attribute _conversion_directory.
+
+            Returns:
+                string -- the value for _conversion_directory.
             """
         return self._conversion_directory
 
     @property
     def copybooks_directory(self):
-        """Getter method for the attribute _copybook_directory.
+        """Getter method for the attribute _copybooks_directory.
             """
         return self._copybooks_directory
 
     @property
     def csv_backups_directory(self):
-        """Getter method for the attribute _copybook_directory.
+        """Getter method for the attribute _csv_backups_directory.
+
+            Returns:
+                string -- the value for _csv_backups_directory.
             """
         return self._csv_backups_directory
 
     @property
     def datasets_directory(self):
         """Getter method for the attribute _datasets_directory.
+
+            Returns:
+                string -- the value for _datasets_directory.
             """
         return self._datasets_directory
 
     @property
     def listcat_directory(self):
         """Getter method for the attribute _listcat_directory.
+
+            Returns:
+                string -- the value for _listcat_directory.
             """
         return self._listcat_directory
 
     @property
     def log_directory(self):
         """Getter method for the attribute _log_directory.
+
+            Returns:
+                string -- the value for _log_directory.
             """
         return self._log_directory
 
     @property
     def working_directory(self):
         """Getter method for the attribute _working_directory.
+
+            Returns:
+                string -- the value for _working_directory.
             """
         return self._working_directory
 
@@ -184,7 +228,11 @@ class Context(object, metaclass=SingletonMeta):
     def working_directory(self, working_directory):
         """Setter method for the attribute _working_directory and all its subdirectories.
 
-            Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already."""
+            Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already.
+            
+            Raises:
+                FileNotFoundError -- Exception is raised if the working directory as well as the log (sub)directory do not exist.
+                """
         working_directory = os.path.expandvars(working_directory)
 
         self._working_directory = os.path.abspath(working_directory)
@@ -209,7 +257,7 @@ class Context(object, metaclass=SingletonMeta):
             if os.path.isdir(self._working_directory) is True:
                 if os.path.isdir(self._log_directory) is True:
                     Log().logger.debug(
-                        '[context] Proper dataset migration directory specified. Proceeding'
+                        '[context] Proper dataset migration working directory specified. Proceeding'
                     )
                 else:
                     raise FileNotFoundError()
@@ -224,18 +272,27 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def records(self):
         """Getter method for the attribute _records.
+
+            Returns:
+                list -- the value for _records.
             """
         return self._records
 
     @property
     def ip_address(self):
         """Getter method for the attribute _ip_address.
+
+            Returns:
+                string -- the value for _ip_address.
             """
         return self._ip_address
 
     @ip_address.setter
     def ip_address(self, ip_address):
         """Setter method for the attribute _ip_address.
+
+            Raises:
+            SystemError -- Exception is raised if the ip address specified does not respect a correct IPv4 or IPv6 format.
             """
         try:
             if ip_address is not None:
@@ -256,6 +313,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def listcat(self):
         """Getter method for the attribute _listcat.
+
+            Returns:
+                Listcat object -- the value for _listcat
             """
         return self._listcat
 
@@ -276,16 +336,21 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def generations(self):
         """Getter method for the attribute _generations.
+
+            Returns:
+                integer -- the value for _generations.
             """
         return self._generations
 
     @generations.setter
     def generations(self, generations):
         """Setter method for the attribute _generations.
+
+            Raises:
+                SystemError -- Exception is raised if generations is negative.
             """
         try:
             if generations is not None:
-                # Analyze if the argument generations is positive
                 if generations > 0:
                     self._generations = generations
                 else:
@@ -298,6 +363,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def prefix(self):
         """Getter method for the attribute _prefix.
+
+            Returns:
+                string -- the value for _prefix.
             """
         return self._prefix
 
@@ -311,6 +379,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def enable_column_list(self):
         """Getter method for the attribute _enable_column_list.
+
+            Returns:
+                list -- the value for _enable_column_list.
             """
         return self._enable_column_list
 
@@ -322,6 +393,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def conversion(self):
         """Getter method for the attribute _conversion.
+
+            Returns:
+                string -- the value for _conversion.
             """
         return self._conversion
 
@@ -336,6 +410,9 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def encoding_code(self):
         """Getter method for the attribute _encoding_code.
+
+            Returns:
+                string -- the value for _encoding_code.
             """
         return self._encoding_code
 
@@ -349,12 +426,18 @@ class Context(object, metaclass=SingletonMeta):
     @property
     def full_timestamp(self):
         """Getter method for the attribute _full_timestamp.
+
+            Returns:
+                string -- the value for _full_timestamp.
             """
         return self._full_timestamp
 
     @property
     def timestamp(self):
         """Getter method for the attribute _timestamp.
+
+            Returns:
+                string -- the value for _timestamp.
             """
         return self._timestamp
 

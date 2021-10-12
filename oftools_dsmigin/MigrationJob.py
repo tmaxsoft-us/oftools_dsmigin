@@ -3,15 +3,9 @@
 """"This modules runs the Migration Job.
 
     Typical usage example:
-
-  job = MigrationJob()
-  job.run()
-    Module that contains all functions required for successful dataset migration to OpenFrame.
-
-    Typical usage example:
-      dsmigin = DSMIGINHandler()
-      dsmigin.run(records)
-"""
+        job = MigrationJob(storage_resource)
+        job.run()
+    """
 
 # Generic/Built-in modules
 import os
@@ -28,47 +22,42 @@ from .Utils import Utils
 
 
 class MigrationJob(Job):
-    """A class used to run the migration job.
+    """A class used to run the Migration Job.
 
-        This class contains a run method that executes all the steps of the job.
-
-        Methods:
-            run(): Perform all the steps to migrate datasets in OpenFrame using dsmigin and update the CSV file.
-
-        A class used to perform all task regarding dataset migration depending mainly on the dataset organization, the DSORG column of the CSV file.
+        This class contains a run method that executes all the steps of the job. It handles all tasks related to dataset migration which mainly depends on the dataset organization, the DSORG column of the CSV file.
 
         Attributes:
-            _migration_type: A string, either 'C' or 'G' for generation or conversion only migration type.
-            _encoding_code: A string, specifies to what ASCII characters the EBCDIC two-byte data should be converted.
-            _today_date: A string, the date of today respecting a certain format.
-            _dataset_directory: A string, located under the working directory, this directory contains all downloaded datasets.
-            _conversion_directory: A string, located under the working directory, this directory contains all converted datasets 
-                that are cleared after each migration (useless files).
-            _copybook_directory: A string, the location of the copybook directory tracked with git.
-            _records: A 2D-list, the elements of the CSV file containing all the dataset data.
+            Inherited from Job module.
 
         Methods:
-            _cobgensch(record): Generate the schema file from the COPYBOOK specified in the CSV file for the given dataset.
-            _migrate_PO(record): Execute migration with the tool dsmigin for a PO dataset.
-            _migrate_PS(record): Execute migration with the tool dsmigin for a PS dataset.
-            _migrate_VSAM(record): Execute migration with the tool dsmigin for a VSAM dataset.
-            _formatting_command(shell_command): Prevent bugs in dsmigin execution by escaping some special characters.
-            _clear_conversion_directory(self): Delete all files in the conversion direcotry at the end of the migration.
-            _analyze(record): Assess migration eligibility.
-            run(records): Main method for dataset migration from Linux environment to OpenFrame volume."""
+            _analyze(record) -- Assesses migration eligibility.
+            _cobgensch(record) -- Generates the schema file from the COPYBOOK parameter specified for the given migration record.
+            _migrate_PO(record) -- Executes the migration using dsmigin for a PO dataset.
+            _migrate_PS(record) -- Executes the migration using dsmigin for a PS dataset.
+            _migrate_VSAM(record) -- Executes the migration using dsmigin for a VSAM dataset.
+            _migrate(record) -- Main method for dataset migration from Linux server to OpenFrame environment.
+            _clear_conversion_directory(self) -- Delete all the files in the conversion directory at the end of the migration.
+            run(record) -- Performs all the steps to migrate datasets using dsmigin and updates the CSV file.
+        """
 
     def _analyze(self, record):
-        """Assess migration eligibility. 
+        """Assesses migration eligibility. 
 
-            This method double check multiple parameters in the CSV file to make sure that dataset migration can process without error:
+            This method double check multiple parameters in the migration dataset records to make sure that the given dataset migration can be processed without error:
                 - check missing information
-                - check DSMIGIN and IGNORE columns status
+                - check IGNORE, FTPDATE, and DSMIGIN columns status
+                - check DSORG column status, and based on the result check the requirements for a successful migration
+                - check COPYBOOK column status, to make sure that the file specified has a .cpy extension
 
-            Args:
-                record: A list, the dataset data to perform the migration.
+            Arguments:
+                record {list} -- The given migration record containing dataset info, which needs a verification prior migration.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+
+            Raises:
+                TypeError -- Exception is raised if the extension of the given copybook is invalid.
+            """
         Log().logger.debug('[migration] Assessing dataset eligibility: ' +
                            record[Col.DSN.value])
         rc = 0
@@ -185,13 +174,14 @@ class MigrationJob(Job):
         return rc
 
     def _cobgensch(self, record):
-        """Generate the schema file from the COPYBOOK specified in the storage resource for the given dataset.
+        """Generates the schema file from the COPYBOOK parameter specified for the given migration record.
 
-            Args:
-                record: A list, the dataset data where to retrieve COPYBOOK location.
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
             
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         rc = 0
 
         cobgensch_command = 'cobgensch ' + Context().copybooks_directory
@@ -202,13 +192,14 @@ class MigrationJob(Job):
         return rc
 
     def _migrate_PO(self, record):
-        """Execute migration with the tool dsmigin for a PO dataset.
+        """Executes the migration using dsmigin for a PO dataset.
 
-            Args:
-                record: A list, the dataset data to perform the migration.
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         po_directory = Context().datasets_directory + '/' + record[
             Col.DSN.value]
         os.chdir(po_directory)
@@ -306,13 +297,14 @@ class MigrationJob(Job):
         return rc
 
     def _migrate_PS(self, record):
-        """Execute migration with the tool dsmigin for a PS dataset.
+        """Executes the migration using dsmigin for a PS dataset.
 
-            Args:
-                record: A list, the dataset data to perform the migration.
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
             
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         rc = 0
 
         # dsdelete command
@@ -348,13 +340,14 @@ class MigrationJob(Job):
         return rc
 
     def _migrate_VSAM(self, record):
-        """Execute migration with the tool dsmigin for a VSAM dataset.
+        """Executes the migration using dsmigin for a VSAM dataset.
 
-            Args:
-                record:
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         rc = 0
 
         # dsmigin command
@@ -378,7 +371,7 @@ class MigrationJob(Job):
         _, _, rc = Utils().execute_shell_command(dsmigin_command)
 
         if Context().conversion != ' -C ':
-            # idcams delete command
+            # idcams delete
             src_file = record[Col.DSN.value]
             options = ' -t CL'
 
@@ -387,7 +380,7 @@ class MigrationJob(Job):
                 idcams_delete_command)
             _, _, rc = Utils().execute_shell_command(idcams_delete_command)
 
-            # idcams define command
+            # idcams define
             src_file = record[Col.DSN.value]
             options = ' -o ' + record[Col.VSAM.value]
             options += ' -l ' + record[Col.AVGLRECL.value]
@@ -421,7 +414,7 @@ class MigrationJob(Job):
                 idcams_define_command)
             _, _, rc = Utils().execute_shell_command(idcams_define_command)
 
-            # idcams repro command
+            # idcams
             src_file = 'OFTOOLS.DSMIGIN.TEMP'
             dst_file = record[Col.DSN.value]
 
@@ -429,7 +422,7 @@ class MigrationJob(Job):
             idcams_repro_command = Utils().format_command(idcams_repro_command)
             _, _, rc = Utils().execute_shell_command(idcams_repro_command)
 
-            # dsdelete command on the Non-VSAM dataset
+            # dsdelete for the Non-VSAM dataset
             dsdelete_command = 'dsdelete OFTOOLS.DSMIGIN.TEMP'
             dsdelete_command = Utils().format_command(dsdelete_command)
             _, _, rc = Utils().execute_shell_command(dsdelete_command)
@@ -437,8 +430,14 @@ class MigrationJob(Job):
         return rc
 
     def _migrate(self, record):
-        """
-        """
+        """Main method for dataset migration from Linux server to OpenFrame environment.
+
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
+
+            Returns:
+                integer -- Return code of the method.
+            """
         start_time = time.time()
 
         if record[Col.DSORG.value] == 'PO':
@@ -466,12 +465,13 @@ class MigrationJob(Job):
         return rc
 
     def _clear_conversion_directory(self):
-        """Delete all files in the conversion directory at the end of the migration.
+        """Delete all the files in the conversion directory at the end of the migration.
 
             In the situation of a migration with conversion only, some files are created in this folder but they are completely useless and take some space, that is why it needs to be cleared after each migration with conversion only.
 
             Returns:
-                An integer, the return code of the method."""
+                integer -- Return code of the method.
+            """
         rc = 0
         os.chdir(Context().conversion_directory)
 
@@ -486,13 +486,16 @@ class MigrationJob(Job):
         return rc
 
     def run(self, record):
-        """Main method for dataset migration from Linux environment to OpenFrame volume.
+        """Performs all the steps to migrate datasets using dsmigin and updates the CSV file.
 
-            Args:
-                records: A 2D-list, the elements of the CSV file containing all the dataset data.
+            It first run the analyze method to check if the given dataset is eligible for migration. Then, it executes the dsmigin command to download it and updates the DSMIGIN status (success or fail) at the same time. Finally, it writes the changes to the CSV file.
+
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                A 2D-list, dataset data after all the changes applied in the migration execution."""
+                integer -- Return code of the job.
+            """
         Log().logger.debug('[migration] Starting Job')
         os.chdir(Context().datasets_directory)
         rc = 0

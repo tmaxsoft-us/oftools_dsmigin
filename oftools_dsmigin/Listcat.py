@@ -3,8 +3,9 @@
 """Module that contains all functions required for an update of the CSV file for VSAM datasets.
 
     Typical usage example:
-      listcat = Listcat()
-      listcat.run(records)"""
+        listcat = Listcat()
+        listcat.run(records)
+    """
 
 # Generic/Built-in modules
 import collections
@@ -24,19 +25,22 @@ class Listcat(object):
     """A class to update certain fields in the CSV file regarding the VSAM datasets using the result of the comman listcat executed in the mainframe.
 
         Attributes:
-            _listcat_list: A list, the name of the text file(s) that contains the listcat output.
-            _listcat_result: A string, the data extracted from the listcat output file.
-            _csv_records: A 2D-list, the elements of the CSV file containing all the dataset data.
+            _headers {list} -- List to store the headers from the program definition on the listcat CSV file.
+            _file_path {string} -- Absolute path to the listcat file, either TXT or CSV.
+            _data_txt {} -- List with the data extracted from the listcat text file.
+            _data {} -- Dictionary with the liscat datasets info.
 
         Methods:
-            __init__(): Initialize all attributes.
-            _read(): Read the content of the listcat output file and store the result in a string.
-            _analyze(): Analyze the data extracted from the listcat output file.
-            _update_csv_records(): Take the liscat extracted data to update the CSV records.
-            run(records): Main method for listcat data retrieval."""
+            __init__() -- Initializes all attributes of the class.
+            _read_txt() -- Reads the listcat text file and store the output in a list.
+            _get_data_txt() -- Analyzes the data extracted from the listcat text file.
+            _write_csv() -- Writes the dataset listcat records changes to the CSV file.
+            generate_csv() -- Main method to convert the listcat TXT file to a CSV file.
+            read_csv() -- Reads the content of the listcat CSV file and store the result in a list.
+        """
 
     def __init__(self, file_path):
-        """Initialize all attributes.
+        """Initializes all attributes of the class.
             """
         self._headers = [column.name for column in LCol]
 
@@ -47,21 +51,22 @@ class Listcat(object):
 
     @property
     def data(self):
-        """
-        """
+        """Getter method for the attribute _data.
+            """
         return self._data
 
     def _read_txt(self):
-        """
-        """
+        """Reads the listcat text file and store the output in a list.
+            """
         file_data = Utils().read_file(self._file_path)
         self._data_txt = file_data.splitlines()
 
     def _get_data_txt(self):
-        """Analyze the data extracted from the listcat output file.
+        """Analyzes the data extracted from the listcat text file.
 
             Returns:
-                A list, the listcat information correctly formatted and organized."""
+                integer -- Return code of the method.
+            """
         rc = 0
         flag = 0
 
@@ -120,7 +125,8 @@ class Listcat(object):
 
         if rc == 0:
             status = 'SUCCESS'
-            Log().logger.info('[listcat] CSV successfully generated: ' + self._file_path)
+            Log().logger.info('[listcat] CSV successfully generated: ' +
+                              self._file_path)
         #TODO No way to fail this at the moment
         else:
             status = 'FAILED'
@@ -130,8 +136,16 @@ class Listcat(object):
         return rc
 
     def _write_csv(self):
-        """
-        """
+        """Writes the dataset listcat records changes to the CSV file.
+        
+            Opens the CSV file, writes the headers in the first row and then writes the data from the records.
+
+            Returns:
+                integer -- Return code of the method.
+                
+            Raises:
+                OSError -- Exception is raised if there is an issue finding or opening the file.
+            """
         try:
             with open(Context().listcat_directory + '/listcat.csv', 'a') as fd:
                 writer = csv.writer(fd, delimiter=',')
@@ -150,27 +164,27 @@ class Listcat(object):
         return rc
 
     def generate_csv(self):
-        """
-        """
+        """Main method to convert the listcat TXT file to a CSV file.
+            """
         Log().logger.debug('[listcat] Starting Listcat CSV generation')
         self._read_txt()
         self._get_data_txt()
-
         #TODO with the refactoring implement something to read the CSV first. Append and update if already exist, create and write if not
         self._write_csv()
 
         Log().logger.debug('[listcat] Ending Listcat CSV generation')
 
     def read_csv(self):
-        """Read the content of the listcat output file and store the result in a string.
+        """Reads the content of the listcat CSV file and store the result in a list.
 
             One listcat file can contains the info of one or multiple datasets.
 
-            Args:
+            Arguments:
                 listcat_file: A string, the absolute path of the file.
 
             Returns:
-                A string, the data extracted from the listcat text file."""
+                A string, the data extracted from the listcat text file.
+            """
         rc = 0
         i = 0
 
@@ -206,10 +220,14 @@ class Listcat(object):
     def update_index_and_data(self, record):
         """Take the liscat extracted data to update the CSV records.
 
-            It first update the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.
+            It first updates the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.
+
+            Arguments:
+                record {list} -- The given listcat record containing dataset info.
 
             Returns:
-                A 2D-list, the updated dataset data with listcat information for VSAM datasets."""
+                integer -- Return code of the method.
+            """
         rc = 0
 
         if self._data != None:

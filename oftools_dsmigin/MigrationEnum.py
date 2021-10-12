@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This module handles the enumeration of all the column names for the migration CSV file.
+"""This module handles the enumeration of all the column names for the migration CSV file, as well as the width of each column.
 
     Typical usage example:
-      records[Col.DSN.name] = 'DSN'
-      records[Col.DSN.value] = 0"""
+        records[Col.DSN.name] = 'DSN'
+        records[Col.DSN.value] = 0
+    """
 
 # Generic/Built-in modules
 import aenum

@@ -3,9 +3,10 @@
 """Module to log all the events of the program execution.
 
     Typical usage example:
-      Log().open_stream()
-      Log().set_level(args.log_level)
-      Log().close_stream()"""
+        Log().open_stream()
+        Log().set_level(args.log_level)
+        Log().close_stream()
+    """
 
 # Generic/Built-in modules
 import logging
@@ -29,24 +30,25 @@ class Log(object, metaclass=SingletonType):
     """A class used to log all the events of the program execution.
 
         Attributes:
-            _level_dict: A dictionary, associate a string and its corresponding log level from logging 
+            _level_dict {dictionary} -- Associate a string and its corresponding log level from logging 
                 module.
-            _level: A string, the log level for the current program execution.
-            _logger: A getLogger object.
-            _formatter: A Formatter object, used to properly format log messages.
-            _file_handler: A FileHandler object, to be able to write log messages to the current log file.
-            _stream_handler: A StreamHandler object, to be able to write log messages to stdout.
+            _level {string} -- Log level for the current program execution.
+            _logger {getLogger object}
+            _formatter {Formatter object} -- This is used to properly format log messages.
+            _file_handler {FileHandler object} -- It allows to write log messages to the current log file.
+            _stream_handler {StreamHandler object} -- it allows to write log messages to stdout.
 
         Methods:
-            __init__(): Initializes the class with all the attributes.
-            set_level(level): Changes log level based on user input.
-            open_stream(): Opens the stream handler to write log messages to stdout.
-            close_stream(): Closes the stream handler at the end of the program execution.
-            open_file(path_to_file): Opens the file handler to write log messages to the log file.
-            close_file(): Closes the file handler at the end of each file processing."""
+            __init__() -- Initializes all the attributes of the class.
+            set_level(level) -- Changes log level based on user input.
+            open_stream() -- Opens the stream handler to write log messages to stdout.
+            close_stream() -- Closes the stream handler at the end of the program execution.
+            open_file(path_to_file) -- Opens the file handler to write log messages to the log file.
+            close_file() -- Closes the file handler at the end of each file processing.
+        """
 
     def __init__(self):
-        """Initializes the class with all the attributes.
+        """Initializes all the attributes of the class.
             """
         self._level_dict = {
             'DEBUG': logging.DEBUG,
@@ -82,8 +84,9 @@ class Log(object, metaclass=SingletonType):
     def set_level(self, level):
         """Changes log level based on user input.
 
-            Args:
-                level: A string, the user input for log level."""
+            Arguments:
+                level {string} -- the user input for log level.
+            """
         if level == 'DEBUG':
             self._formatter = logging.Formatter(
                 fmt=

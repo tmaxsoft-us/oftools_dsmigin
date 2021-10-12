@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This module retrieves the parameters entered by the user and launches the corresponding job.
+"""This module retrieves the parameters entered by the user and creates the corresponding job.
 
     Typical usage example:
-      job_factory = JobFactory()
-      job_factory.create('update')"""
+        job_factory = JobFactory()
+        job_factory.create('update')
+    """
 
 # Generic/Built-in modules
 
@@ -25,11 +26,12 @@ class JobFactory(object):
             _storage_resource {Storage Resource object} -- Object where the program read and write the data. It could be a CSV file or a database table.
 
         Methods:
-            __init__(storage_resource) -- Initializes the class with the _storage_resource attribute.
-            create(input) -- Creates the job according to the input parameter."""
+            __init__(storage_resource) -- Initializes the only attribute of the class.
+            create(input) -- Creates the job according to the input parameter.
+        """
 
     def __init__(self, storage_resource):
-        """Initializes the class with the _storage_resource attribute.
+        """Initializes the only attribute of the class.
             """
         self._storage_resource = storage_resource
 
@@ -40,7 +42,8 @@ class JobFactory(object):
                 job_name {string} -- Name of the job.
 
             Returns:
-                Job object -- Appropriate job depending on the input."""
+                Job object -- Appropriate job depending on the input.
+            """
         if job_name == 'ftp':
             return FTPJob(self._storage_resource)
         elif job_name == 'listcat':

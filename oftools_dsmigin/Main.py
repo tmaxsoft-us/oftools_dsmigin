@@ -34,7 +34,8 @@ class Main(object):
         Methods:
             _parse_arg() -- Parsing command-line options.
             _create_jobs(args, csv) -- Creates job depending on the input parameters.
-            run() -- Perform to execute jobs of OpenFrame Tools Dataset Migration."""
+            run() -- Perform to execute jobs of OpenFrame Tools Dataset Migration.
+        """
 
     def _parse_arg(self):
         """Parses command-line options.
@@ -44,7 +45,8 @@ class Main(object):
             messages and issues errors when users give the program invalid arguments.
 
             Returns:
-                ArgumentParser object -- Program input arguments."""
+                ArgumentParser object -- Program input arguments.
+            """
         parser = argparse.ArgumentParser(
             add_help=False, description='OpenFrame Tools Dataset Migration')
 
@@ -289,7 +291,8 @@ class Main(object):
                 #TODO Complete docstrings, maybe change the behavior to print traceback only with DEBUG as log level
 
             Returns:
-                list -- List of jobs."""
+                list -- List of jobs.
+            """
         Log().logger.debug('Creating jobs')
         jobs = []
         job_factory = JobFactory(storage_resource)
@@ -328,7 +331,11 @@ class Main(object):
         """Performs all the steps to execute jobs of oftools_dsmigin.
 
             Returns:
-                integer -- General return code of the program."""
+                integer -- General return code of the program.
+                
+            Raises:
+                KeyboardInterrupt -- Exception is raised if the user press Ctrl + C.
+            """
         rc = 0
         # For testing purposes. allow to remove logs when executing coverage
         # logging.disable(logging.CRITICAL)

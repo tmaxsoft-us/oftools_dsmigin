@@ -3,8 +3,9 @@
 """This modules runs the FTP Job.
 
     Typical usage example:
-      job = DownloadJob()
-      job.run()"""
+        job = FTPJob(storage_resource)
+        job.run()
+    """
 
 # Generic/Built-in modules
 import os
@@ -21,32 +22,39 @@ from .Utils import Utils
 
 
 class FTPJob(Job):
-    """A class used to run the FTP job.
+    """A class used to run the FTP Job.
 
         This class contains a run method that executes all the steps of the job.
 
+        Attributes:
+            Inherited from Job module.
+
         Methods:
-            _format_dataset_info(shell_result): Process FTP command output to retrieve useful information and format it.
-            _get_mainframe_dataset_info(records): Execute command on mainframe to retrieve dataset info.
-            _recall(record): Executes FTP command to make dataset available to download.
-            _analyze(record): Assess download eligibility.
-            download(records): Main method for dataset download from mainframe to Linux server.
-            run(): Perform all the steps to download datasets using FTP and update the CSV file."""
+            _analyze(record) -- Assesses download eligibility.
+            _download_PS(dsn, rdwftp) -- Downloads dataset with DSORG set to PS.
+            _download_PO(dsn, rdwftp) -- Downloads dataset with DSORG set to PO.
+            _download_VSAM(dsn, rdwftp) -- Downloads dataset with DSORG set to VSAM.
+            _download_tape(record, rdwftp) -- Downloads dataset with VOLSER set to Tape.
+            _download(record) -- Main method for dataset download from mainframe to Linux server.
+            run(record) -- Performs all the steps to download datasets using FTP and updates the CSV file.
+        """
 
     def _analyze(self, record):
-        """Assess download eligibility. 
+        """Assesses download eligibility. 
 
-            This method double check multiple parameters in the CSV file to make sure that dataset download can process without error:
+            This method double check multiple parameters in the migration dataset records to make sure that the given dataset download can be processed without error:
                 - check missing information
-                - check FTP and IGNORE columns status
-                - check VOLSER column status, trigger recall method
-                - check RECFM and DSORG column status
+                - check IGNORE, LISTCATDATE and FTP columns status
+                - check VOLSER column status, the dataset will be skipped if it is equal to Pseudo or Migrated
+                - check DSORG column status, and the prefix if the given dataset is a VSAM dataset
+                - check VOLSER column to see if the dataset is in Tape volume, and trigger the appropriate download method
 
-            Args:
-                record: A list, the dataset data to execute verification prior download.
+            Arguments:
+                record {list} -- The given migration record containing dataset info, which needs a verification prior download.
             
             Returns:
-                An integer, the return code of the method."""
+                integer - Return code of the method.
+            """
         Log().logger.debug('[ftp] Assessing dataset eligibility: ' +
                            record[Col.DSN.value])
         rc = 0
@@ -120,7 +128,14 @@ class FTPJob(Job):
         return rc
 
     def _download_PS(self, dsn, rdwftp):
-        """
+        """Downloads dataset with DSORG set to PS.
+
+            Arguments:
+                dsn {string} -- Dataset name.
+                rdwftp {string} -- Additional ftp command for dataset with RECFM set to VB.
+
+            Returns:
+                integer -- Return code of the method.
             """
         ftp_command = rdwftp + '\nget ' + dsn
         _, _, rc = Utils().execute_ftp_command(ftp_command)
@@ -128,7 +143,14 @@ class FTPJob(Job):
         return rc
 
     def _download_PO(self, dsn, rdwftp):
-        """
+        """Downloads dataset with DSORG set to PO.
+
+            Arguments:
+                dsn {string} -- Dataset name.
+                rdwftp {string} -- Additional ftp command for dataset with RECFM set to VB.
+
+            Returns:
+                integer -- Return code of the method.
             """
         # Creating the directory for the PO dataset
         if not os.path.exists(dsn):
@@ -141,7 +163,16 @@ class FTPJob(Job):
         return rc
 
     def _download_VSAM(self, dsn, rdwftp):
-        """
+        """Downloads dataset with DSORG set to VSAM.
+
+            It is not dowloading directly the VSAM dataset but the flat file where the VSAM dataset has been unloaded.
+
+            Arguments:
+                dsn {string} -- Dataset name.
+                rdwftp {string} -- Additional ftp command for dataset with RECFM set to VB.
+
+            Returns:
+                integer -- Return code of the method.
             """
         ftp_command = rdwftp + '\nget ' + Context().prefix + dsn + ' ' + dsn
         _, _, rc = Utils().execute_ftp_command(ftp_command)
@@ -149,7 +180,16 @@ class FTPJob(Job):
         return rc
 
     def _download_tape(self, record, rdwftp):
-        """
+        """Downloads dataset with VOLSER set to Tape.
+
+            This method does not only download the given dataset 
+
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
+                rdwftp {string} -- Additional ftp command for dataset with RECFM set to VB.
+
+            Returns:
+                integer -- Return code of the method.
             """
         dsn = record[Col.DSN.value]
         ftp_command = rdwftp + '\nget ' + dsn
@@ -172,11 +212,12 @@ class FTPJob(Job):
     def _download(self, record):
         """Main method for dataset download from mainframe to Linux server.
 
-            Args:
-                records: A 2D-list, the elements of the CSV file containing all the dataset data.
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
 
             Returns:
-                A 2D-list, dataset data after all the changes applied in the download execution."""
+                integer -- Return code of the method.
+            """
         rc = 0
         # quote is an FTP option and RDW is dataset length for the given dataset
         # This conditional statement allow to retrieve record length for V (Variable) or VB (Variable Blocked) for successful download
@@ -215,12 +256,15 @@ class FTPJob(Job):
         return rc
 
     def run(self, record):
-        """Perform all the steps to download datasets using FTP and update the CSV file.
+        """Performs all the steps to download datasets using FTP and updates the CSV file.
 
-            It first creates a backup of the CSV file and loads it. Then, it executes the FTP command to download datasets and updating the FTP status (success or fail) at the same time. It finally writes the changes to the CSV, and updates the statistics.
+            It first run the analyze method to check if the given dataset is eligible for download. Then, it executes the FTP command to download it and updates the FTP status (success or fail) at the same time. Finally, it writes the changes to the CSV file.
+
+            Arguments:
+                record {list} -- The given migration record containing dataset info.
 
             Returns: 
-                An integer, the return code of the job."""
+                integer -- Return code of the job."""
         Log().logger.debug('[ftp] Starting Job')
         os.chdir(Context().datasets_directory)
         rc = 0
