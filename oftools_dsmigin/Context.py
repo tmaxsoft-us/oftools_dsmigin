@@ -75,7 +75,7 @@ class Context(object, metaclass=SingletonMeta):
         # Required variables for program execution
         self._initialization = False
         self._max_datasets = 0
-        self._tag = ''
+        self._tag, _, _ = Utils().execute_shell_command('logname')
 
         # Directories
         self._conversion_directory = ''
