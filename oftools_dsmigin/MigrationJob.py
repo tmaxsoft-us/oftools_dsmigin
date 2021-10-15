@@ -414,7 +414,7 @@ class MigrationJob(Job):
                 idcams_define_command)
             _, _, rc = Utils().execute_shell_command(idcams_define_command)
 
-            # idcams
+            # idcams repro
             src_file = 'OFTOOLS.DSMIGIN.TEMP'
             dst_file = record[Col.DSN.value]
 

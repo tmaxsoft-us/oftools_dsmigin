@@ -152,7 +152,7 @@ class Main(object):
             dest='generations',
             help=
             'number of generations to be processed, specifically for GDG datasets',
-            metavar='INTEGER',
+            metavar='GENERATIONS',
             required=False,
             type=int)
 
@@ -203,7 +203,7 @@ class Main(object):
                               action='store',
                               dest='number',
                               help='number of datasets to be processed',
-                              metavar='INTEGER',
+                              metavar='NUMBER',
                               required=False,
                               type=int)
 
