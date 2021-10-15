@@ -4,6 +4,9 @@ init:
 build:
 	python3 setup.py sdist
 
+remove:
+	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+
 install:
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
@@ -18,21 +21,21 @@ install_user:
 
 uninstall:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r build dist oftools_dsmigin.egg-info
+	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 
 uninstall_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r build dist oftools_dsmigin.egg-info
+	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 
 reinstall:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r build dist oftools_dsmigin.egg-info
+	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
 
 reinstall_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r build dist oftools_dsmigin.egg-info
+	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	python3 -m pip install dist/*.whl
 
@@ -42,7 +45,7 @@ upload:
 upload_test:
 	python3 setup.py sdist upload -r testpypi
 
-remove:
+remove_pypi:
 	curl --form ":action=remove_pkg" --form "name=oftools-dsmigin" --form "version=0.0.1" URL -u id:pass
 
 yapf:
