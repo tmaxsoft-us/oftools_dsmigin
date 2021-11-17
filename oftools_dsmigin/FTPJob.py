@@ -105,6 +105,8 @@ class FTPJob(Job):
                             'PrefixError: -p or --prefix option must be specified for VSAM dataset download from mainframe'
                         )
                         rc = 1
+                elif record[Col.DSORG.value] == 'GDG':
+                    rc = 1
 
                 elif record[Col.DSORG.value] in unset_list:
                     if record[Col.VOLSER.value] == 'Tape':
@@ -182,7 +184,7 @@ class FTPJob(Job):
     def _download_tape(self, record, rdwftp):
         """Downloads dataset with VOLSER set to Tape.
 
-            This method does not only download the given dataset 
+            This method does not only download the given dataset but also retrieves information about it, only of the dataset has a fixed block length.
 
             Arguments:
                 record {list} -- The given migration record containing dataset info.
@@ -203,9 +205,18 @@ class FTPJob(Job):
                     if fields[5] == 'FIXrecfm':
                         record[Col.RECFM.value] = 'FB'
                         record[Col.LRECL.value] = fields[6]
-                    elif fields[5] == 'VARrecfm':
-                        record[Col.RECFM.value] = 'VB'
-                        record[Col.LRECL.value] = fields[6]
+                    else:
+                        Log().logger.warning(
+                            '[ftp] RECFM for given dataset not equal to FB, but equal to VB: Manual effort required to fill dataset parameters in CSV file'
+                        )
+                else:
+                    Log().logger.warning(
+                        '[ftp] Insufficient information in download output: Manual effort required to fill dataset parameters in CSV file'
+                    )
+            else:
+                Log().logger.warning(
+                    '[ftp] Insufficient information in download output: Manual effort required to fill dataset parameters in CSV file'
+                )
 
         return rc
 

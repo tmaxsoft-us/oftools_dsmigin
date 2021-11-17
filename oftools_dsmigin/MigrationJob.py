@@ -142,6 +142,11 @@ class MigrationJob(Job):
                         Log().logger.warning(skip_message +
                                              'Missing AVGLRECL parameter')
                         rc = 1
+                
+                elif record[Col.DSORG.value] == 'GDG':
+                    Log().logger.warning(skip_message +
+                                         'DSORG parameter set to GDG')
+                    rc = 1
 
                 elif record[Col.DSORG.value] in unset_list:
                     Log().logger.warning(skip_message +

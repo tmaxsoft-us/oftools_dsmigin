@@ -117,7 +117,7 @@ class ListcatJob(Job):
 
         if rc == 0:
             lines = stdout.splitlines()
-            if len(lines) > 0:
+            if len(lines) > 1:
                 fields = lines[1].split()
 
                 if fields[1] == 'Tape':
@@ -159,6 +159,8 @@ class ListcatJob(Job):
 
                     status = 'SUCCESS'
             else:
+                if lines[0] == 'No data sets found.':
+                    Log().logger.info('[listcat] No such dataset on Mainframe.')
                 status = 'FAILED'
         else:
             status = 'FAILED'

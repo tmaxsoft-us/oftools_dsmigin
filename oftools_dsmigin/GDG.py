@@ -189,11 +189,18 @@ class GDG(object):
                                     'LISTCAT GDG OLDER GENERATIONS ' + status)
                                 generations_count += 1
 
-                        elif fields[-1] == 'Dsname':
+                        elif fields[-1] == 'Dsname' and generations_count > 0:
                             Log().logger.info('[gdg] Oldest generation reached')
                             status = 'SUCCESS'
                             rc = 0
                             break
+                        
+                        elif fields[-1] == 'Dsname' and generations_count == 0:
+                            Log().logger.info('[gdg] No generation found for given GDG base')
+                            status = 'SUCCESS'
+                            rc = 0
+                            break
+                        
                         else:
                             Log().logger.debug(
                                 '[gdg] Dataset name pattern incorrect: ' +
