@@ -57,8 +57,9 @@ class Context(object, metaclass=SingletonMeta):
             _prefix {string} --
 
             _enable_column_list {list} --
-            _conversion {string} -- If the user specifies the conversion flag, it changes from '' to 'C' to perform conversion only migration type.
+            _conversion {string} -- If the user specifies the conversion flag, it changes from '' to '-C' to perform conversion only migration type.
             _encoding_code {string} -- It specifies to what ASCII characters the EBCDIC two-byte data should be converted.
+            _force {string} -- If the user specifies the force flag, it changes from '' to '-F' to perform forced migration, which means erasing the dataset if already migrated in OpenFrame.
 
             _full_timestamp {string} -- The date of today respecting a certain format, including date and time.
             _timestamp {string} -- The date of today respecting a certain format, including date only.
@@ -76,6 +77,7 @@ class Context(object, metaclass=SingletonMeta):
         self._initialization = False
         self._max_datasets = 0
         self._tag, _, _ = Utils().execute_shell_command('logname')
+        self._tag = '_' + self._tag.replace('\n', '')
 
         # Directories
         self._conversion_directory = ''
@@ -98,6 +100,7 @@ class Context(object, metaclass=SingletonMeta):
         self._enable_column_list = []
         self._conversion = ''
         self._encoding_code = ''
+        self._force = ''
 
         # Other
         self._full_timestamp = datetime.datetime.today().strftime(
@@ -385,10 +388,14 @@ class Context(object, metaclass=SingletonMeta):
             """
         return self._enable_column_list
 
-    def append_enable_column(self, column):
-        """Append method for the attribute _enable_column_list.
+    @enable_column_list.setter
+    def enable_column_list(self, column_names):
+        """Setter method for the attribute _enable_column_list.
             """
-        self._enable_column_list.append(column)
+        if column_names is not None:
+            columns = column_names.split(':')
+            for column in columns:
+                self._enable_column_list.append(column)
 
     @property
     def conversion(self):
@@ -422,6 +429,23 @@ class Context(object, metaclass=SingletonMeta):
             """
         if encoding_code is not None:
             self._encoding_code = encoding_code
+    
+    @property
+    def force(self):
+        """Getter method for the attribute _force.
+
+            Returns:
+                string -- the value for _force.
+            """
+        return self._force
+
+    @force.setter
+    def force(self, force):
+        """Setter method for the attribute _force.
+            """
+        if force is not None:
+            if force is True:
+                self._force = ' -F '
 
     @property
     def full_timestamp(self):

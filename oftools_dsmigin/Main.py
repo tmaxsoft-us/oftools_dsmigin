@@ -106,12 +106,11 @@ class Main(object):
             required=False)
 
         # Optional arguments
-        optional.add_argument(
-            '--clear',
-            action='store_true',
-            dest='clear',
-            help=argparse.SUPPRESS,
-            required=False)
+        optional.add_argument('--clear',
+                              action='store_true',
+                              dest='clear',
+                              help=argparse.SUPPRESS,
+                              required=False)
 
         optional.add_argument(
             '-C',
@@ -144,6 +143,13 @@ class Main(object):
             metavar='COLUMN',
             required=False,
             type=str)
+
+        optional.add_argument('-f',
+                              '--force',
+                              action='store_true',
+                              dest='force',
+                              help='flag to force dataset migration',
+                              required=False)
 
         optional.add_argument(
             '-g',
@@ -311,11 +317,10 @@ class Main(object):
                 job = job_factory.create('ftp')
                 jobs.append(job)
             if args.migration:
-                columns = args.column_names.split(':')
-                for column in columns:
-                    Context().append_enable_column(column)
+                Context().enable_column_list = args.column_names
                 Context().encoding_code = args.encoding_code
                 Context().conversion = args.conversion
+                Context().force = args.force
                 job = job_factory.create('migration')
                 jobs.append(job)
         except:
@@ -380,7 +385,7 @@ class Main(object):
                     record = Context().records[i].columns
 
                     for job in jobs:
-                        rc = job.run(record)
+                        rc = job.run(i, record)
                         if rc != 0:
                             if rc == 1:
                                 Log().logger.debug('Skipping dataset: rc = 1')
