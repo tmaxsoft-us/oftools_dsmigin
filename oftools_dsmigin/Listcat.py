@@ -76,11 +76,14 @@ class Listcat(object):
                 fields = line.split(' -- ')
                 catalog = fields[1].strip()
 
-            if flag == 0 and 'CLUSTER--' in line:
+            if flag == 0 and 'DATA -------' in line:
+                flag = 1
+
+            if flag == 1 and 'CLUSTER--' in line:
                 fields = line.split('--')
                 if not fields[1].startswith('...'):
                     Log().logger.debug('Dataset identified:' + fields[1])
-                    flag = 1
+                    flag = 2
                     dsn = fields[1]
                     recfm = 'VB'
                     vsam = ''
@@ -88,11 +91,11 @@ class Listcat(object):
                     maxlrecl, avglrecl = '', ''
                     cisize = ''
 
-            elif flag == 1 and 'ATTRIBUTES' in line:
+            elif flag == 2 and 'ATTRIBUTES' in line:
                 # Log().logger.debug('Attributes section found')
-                flag = 2
+                flag = 3
 
-            elif flag == 2 and 'STATISTICS' not in line:
+            elif flag == 3 and 'STATISTICS' not in line:
                 # Log().logger.debug('Analyzing attributes')
                 dataset_attributes = line.replace('-', '')
                 dataset_attributes = dataset_attributes.split()
@@ -116,7 +119,7 @@ class Listcat(object):
                         vsam = 'RR'
 
             # Re-initialization for the next dataset
-            elif flag == 2 and 'STATISTICS' in line:
+            elif flag == 3 and 'STATISTICS' in line:
                 self._data[dsn] = [
                     recfm, vsam, keyoff, keylen, maxlrecl, avglrecl, cisize,
                     catalog
