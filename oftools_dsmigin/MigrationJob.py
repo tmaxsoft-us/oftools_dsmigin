@@ -75,8 +75,8 @@ class MigrationJob(Job):
                 Log().logger.info(skip_message + 'IGNORE set to "Y"')
                 rc = 1
             elif record[Col.FTPDATE.value] == '':
-                Log().logger.debug(skip_message + 'FTPDATE not set')
-                rc = 1
+                Log().logger.info('[migration] FTPDATE not set')
+                rc = 0
             elif record[Col.DSMIGIN.value] == 'N':
                 Log().logger.debug(skip_message + 'DSMIGIN set to "N"')
                 rc = 1
@@ -142,10 +142,14 @@ class MigrationJob(Job):
                         Log().logger.warning(skip_message +
                                              'Missing AVGLRECL parameter')
                         rc = 1
-                
+
                 elif record[Col.DSORG.value] == 'GDG':
-                    Log().logger.warning(skip_message +
-                                         'DSORG parameter set to GDG')
+                    Log().logger.warning(
+                        skip_message +
+                        'DSORG set to "GDG": Ignoring GDG base for migration')
+                    record[Col.DSMIGINDATE.value] = Context().timestamp
+                    record[Col.DSMIGINDURATION.value] = '0'
+                    record[Col.DSMIGIN.value] = 'N'
                     rc = 1
 
                 elif record[Col.DSORG.value] in unset_list:
@@ -196,6 +200,33 @@ class MigrationJob(Job):
 
         return rc
 
+    def _is_in_openframe(self, dsn):
+        """
+            """
+        listcat_command = 'listcat ' + dsn
+        stdout, _, rc = Utils().execute_shell_command(listcat_command)
+
+        is_in_openframe = False
+
+        if rc == 0:
+            lines = stdout.splitlines()
+            if len(lines) > 1:
+                fields = lines[-2].split()
+                #TODO Throw error if the conversion to int is not working
+                if int(fields[2]) > 0:
+                    is_in_openframe = True
+                else:
+                    is_in_openframe = False
+            else:
+                Log().logger.debug(
+                    '[migration] Not enough data in the listcat command output: '
+                )
+                Log().logger.debug(lines)
+        else:
+            Log().logger.debug('[migration] Listcat command not working')
+
+        return is_in_openframe
+
     def _migrate_PO(self, record):
         """Executes the migration using dsmigin for a PO dataset.
 
@@ -205,6 +236,16 @@ class MigrationJob(Job):
             Returns:
                 integer -- Return code of the method.
             """
+
+        if Context().force == '':
+            is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
+            if is_in_openframe:
+                Log().logger.info(
+                    '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+                )
+                rc = 1
+                return rc
+
         po_directory = Context().datasets_directory + '/' + record[
             Col.DSN.value]
         os.chdir(po_directory)
@@ -239,8 +280,7 @@ class MigrationJob(Job):
                 options += ' -f L'
                 options += ' -sosi 6'
                 options += Context().conversion
-                # Forced migration
-                options += ' -F'
+                options += Context().force
 
                 dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
                 dsmigin_command = Utils().format_command(dsmigin_command)
@@ -289,7 +329,7 @@ class MigrationJob(Job):
                 else:
                     options += ' -f ' + record[Col.RECFM.value]
                 options += ' -sosi 6'
-                options += ' -F'  # Forced migration
+                options += Context().force
 
                 dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
                 dsmigin_command = Utils().format_command(dsmigin_command)
@@ -311,6 +351,15 @@ class MigrationJob(Job):
                 integer -- Return code of the method.
             """
         rc = 0
+
+        if Context().force == '':
+            is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
+            if is_in_openframe:
+                Log().logger.info(
+                    '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+                )
+                rc = 1
+                return rc
 
         # dsdelete command
         src_file = record[Col.DSN.value]
@@ -336,7 +385,7 @@ class MigrationJob(Job):
         options += ' -o ' + record[Col.DSORG.value]
         options += ' -sosi 6'
         options += Context().conversion
-        options += ' -F'  # Forced migration
+        options += Context().force
 
         dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
         dsmigin_command = Utils().format_command(dsmigin_command)
@@ -355,82 +404,75 @@ class MigrationJob(Job):
             """
         rc = 0
 
-        # dsmigin command
+        if Context().force == '':
+            is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
+            if is_in_openframe:
+                Log().logger.info(
+                    '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+                )
+                rc = 1
+                return rc
+
+        # idcams delete
         src_file = record[Col.DSN.value]
+        options = ' -t CL'
+
+        idcams_delete_command = 'idcams delete' + ' -n ' + src_file + options
+        idcams_delete_command = Utils().format_command(idcams_delete_command)
+        _, _, rc = Utils().execute_shell_command(idcams_delete_command)
+
+        # idcams define
+        src_file = record[Col.DSN.value]
+        options = ' -o ' + record[Col.VSAM.value]
+        options += ' -l ' + record[Col.AVGLRECL.value]
+        options += ',' + record[Col.MAXLRECL.value]
+        options += ' -k ' + record[Col.KEYLEN.value]
+        options += ',' + record[Col.KEYOFF.value]
+        options += ' -t CL'
+        options += ' -O'
+
+        if 'CATALOG' in Context().enable_column_list:
+            Log().logger.info('[migration] Using column value for CATALOG: ' +
+                              record[Col.CATALOG.value])
+            options += ' -c ' + record[Col.CATALOG.value]
+        else:
+            Log().logger.debug(
+                '[migration] Using default value for CATALOG: SYS1.MASTER.ICFCAT'
+            )
+            options += ' -c SYS1.MASTER.ICFCAT'
+        if 'VOLSER' in Context().enable_column_list:
+            Log().logger.info('[migration] Using column value for VOLSER: ' +
+                              record[Col.VOLSER.value])
+            options += ' -v ' + record[Col.VOLSER.value]
+        else:
+            Log().logger.debug(
+                '[migration] Using default value for VOLSER: DEFVOL')
+            options += ' -v DEFVOL'
+
+        idcams_define_command = 'idcams define' + ' -n ' + src_file + options
+        idcams_define_command = Utils().format_command(idcams_define_command)
+        _, _, rc = Utils().execute_shell_command(idcams_define_command)
+
+        # dsmigin command
+        src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
         if Context().conversion == ' -C ':
             dst_file = Context().conversion_directory + '/' + src_file
         else:
-            dst_file = 'OFTOOLS.DSMIGIN.TEMP'
+            dst_file = record[Col.DSN.value]
 
         options = ' -e ' + Context().encoding_code
         options += ' -s ' + record[Col.COPYBOOK.value].rsplit('.',
                                                               1)[0] + '.conv'
         options += ' -f ' + record[Col.RECFM.value]
+        options += ' -l ' + record[Col.MAXLRECL.value]
         options += ' -R'
         options += ' -sosi 6'
         options += Context().conversion
-        options += ' -F'  # Forced migration
+        options += Context().force
 
         dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
         dsmigin_command = Utils().format_command(dsmigin_command)
         _, _, rc = Utils().execute_shell_command(dsmigin_command)
-
-        if Context().conversion != ' -C ':
-            # idcams delete
-            src_file = record[Col.DSN.value]
-            options = ' -t CL'
-
-            idcams_delete_command = 'idcams delete' + ' -n ' + src_file + options
-            idcams_delete_command = Utils().format_command(
-                idcams_delete_command)
-            _, _, rc = Utils().execute_shell_command(idcams_delete_command)
-
-            # idcams define
-            src_file = record[Col.DSN.value]
-            options = ' -o ' + record[Col.VSAM.value]
-            options += ' -l ' + record[Col.AVGLRECL.value]
-            options += ',' + record[Col.MAXLRECL.value]
-            options += ' -k ' + record[Col.KEYLEN.value]
-            options += ',' + record[Col.KEYOFF.value]
-            options += ' -t CL'
-
-            if 'CATALOG' in Context().enable_column_list:
-                Log().logger.debug(
-                    '[migration] Using column value for CATALOG: ' +
-                    record[Col.CATALOG.value])
-                options += ' -c ' + record[Col.CATALOG.value]
-            else:
-                Log().logger.debug(
-                    '[migration] Using default value for CATALOG: SYS1.MASTER.ICFCAT'
-                )
-                options += ' -c SYS1.MASTER.ICFCAT'
-            if 'VOLSER' in Context().enable_column_list:
-                Log().logger.debug(
-                    '[migration] Using column value for VOLSER: ' +
-                    record[Col.VOLSER.value])
-                options += ' -v ' + record[Col.VOLSER.value]
-            else:
-                Log().logger.debug(
-                    '[migration] Using default value for VOLSER: DEFVOL')
-                options += ' -v DEFVOL'
-
-            idcams_define_command = 'idcams define' + ' -n ' + src_file + options
-            idcams_define_command = Utils().format_command(
-                idcams_define_command)
-            _, _, rc = Utils().execute_shell_command(idcams_define_command)
-
-            # idcams repro
-            src_file = 'OFTOOLS.DSMIGIN.TEMP'
-            dst_file = record[Col.DSN.value]
-
-            idcams_repro_command = 'idcams repro' + ' -i ' + src_file + ' -o ' + dst_file
-            idcams_repro_command = Utils().format_command(idcams_repro_command)
-            _, _, rc = Utils().execute_shell_command(idcams_repro_command)
-
-            # dsdelete for the Non-VSAM dataset
-            dsdelete_command = 'dsdelete OFTOOLS.DSMIGIN.TEMP'
-            dsdelete_command = Utils().format_command(dsdelete_command)
-            _, _, rc = Utils().execute_shell_command(dsdelete_command)
 
         return rc
 
@@ -490,7 +532,7 @@ class MigrationJob(Job):
 
         return rc
 
-    def run(self, record):
+    def run(self, _, record):
         """Performs all the steps to migrate datasets using dsmigin and updates the CSV file.
 
             It first run the analyze method to check if the given dataset is eligible for migration. Then, it executes the dsmigin command to download it and updates the DSMIGIN status (success or fail) at the same time. Finally, it writes the changes to the CSV file.
