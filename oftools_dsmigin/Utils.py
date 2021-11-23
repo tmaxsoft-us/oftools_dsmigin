@@ -232,7 +232,7 @@ class Utils(object, metaclass=SingletonMeta):
                 stdout = None
                 stderr = None
                 return_code = -1
-                return stdout,stderr, return_code
+                return stdout, stderr, return_code
 
             if Log().level == 'DEBUG':
                 if return_code != 0:
@@ -243,7 +243,7 @@ class Utils(object, metaclass=SingletonMeta):
                     Log().logger.debug(stdout)
                     Log().logger.debug(stderr)
                     Log().logger.debug('return code: ' + str(return_code))
-            elif return_code != 0 :
+            elif return_code != 0:
                 Log().logger.error(stdout)
                 Log().logger.error(stderr)
         else:
@@ -267,10 +267,15 @@ class Utils(object, metaclass=SingletonMeta):
         # ! the PROFILE to add TCP connection on port 22, still not working
         connect_command = 'ftp ' + self._ip_address + '<< EOF\n binary\ncd ..\n'
         quit_command = '\nquit\nEOF'
-        
+
         shell_command = connect_command + ftp_command + quit_command
-        
-        return self.execute_shell_command(shell_command)
+        stdout, stderr, return_code = self.execute_shell_command(shell_command)
+
+        if return_code == 0:
+            if 'not found' in stdout or 'No data sets found.' in stdout or 'cannot be processed' in stdout:
+                return_code = -1
+
+        return stdout, stderr, return_code
 
     def format_command(self, shell_command):
         """Prevents bugs in dsmigin execution by escaping some special characters.

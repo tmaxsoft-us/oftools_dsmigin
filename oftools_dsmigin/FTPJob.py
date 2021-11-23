@@ -71,8 +71,8 @@ class FTPJob(Job):
                 Log().logger.info(skip_message + 'IGNORE set to "Y"')
                 rc = 1
             elif record[Col.LISTCATDATE.value] == '':
-                Log().logger.debug(skip_message + 'LISTCATDATE not set')
-                rc = 1
+                Log().logger.info('[ftp] LISTCATDATE not set')
+                rc = 0
             elif record[Col.FTP.value] == 'N':
                 Log().logger.debug(skip_message + 'FTP set to "N"')
                 rc = 1
@@ -106,6 +106,12 @@ class FTPJob(Job):
                         )
                         rc = 1
                 elif record[Col.DSORG.value] == 'GDG':
+                    Log().logger.warning(
+                        skip_message +
+                        'DSORG set to "GDG": Ignoring GDG base for download')
+                    record[Col.FTPDATE.value] = Context().timestamp
+                    record[Col.FTPDURATION.value] = '0'
+                    record[Col.FTP.value] = 'N'
                     rc = 1
 
                 elif record[Col.DSORG.value] in unset_list:
@@ -201,22 +207,23 @@ class FTPJob(Job):
             ftp_result = stdout.splitlines()
             if len(ftp_result) > 2:
                 fields = ftp_result[3].split()
-                if len(fields) > 5:
+
+                if len(fields) > 6:
                     if fields[5] == 'FIXrecfm':
+                        Log().logger.info(
+                            '[ftp] Downloaded dataset from Tape: RECFM set to FB'
+                        )
                         record[Col.RECFM.value] = 'FB'
                         record[Col.LRECL.value] = fields[6]
-                    else:
-                        Log().logger.warning(
-                            '[ftp] RECFM for given dataset not equal to FB, but equal to VB: Manual effort required to fill dataset parameters in CSV file'
-                        )
                 else:
                     Log().logger.warning(
-                        '[ftp] Insufficient information in download output: Manual effort required to fill dataset parameters in CSV file'
+                        '[ftp] Downloaded dataset from Tape: FIXrecfm string not found: RECFM set to VB'
                     )
-            else:
-                Log().logger.warning(
-                    '[ftp] Insufficient information in download output: Manual effort required to fill dataset parameters in CSV file'
-                )
+                    Log().logger.warning(
+                        '[ftp] VB dataset incorrectly downloaded. Please run FTP again for the given dataset'
+                    )
+                    record[Col.RECFM.value] = 'VB'
+                    rc = -2
 
         return rc
 
@@ -233,7 +240,10 @@ class FTPJob(Job):
         # quote is an FTP option and RDW is dataset length for the given dataset
         # This conditional statement allow to retrieve record length for V (Variable) or VB (Variable Blocked) for successful download
         if record[Col.RECFM.value] != '' and record[Col.RECFM.value][0] == 'V':
-            rdwftp = 'quote site rdw\n'
+            if record[Col.VOLSER.value] == 'Tape':
+                rdwftp = 'quote SITE RDW READTAPEFORMAT=V\n'
+            else:
+                rdwftp = 'quote site rdw\n'
         else:
             rdwftp = ''
 
@@ -258,6 +268,11 @@ class FTPJob(Job):
             record[Col.FTPDURATION.value] = str(round(elapsed_time, 4))
             if record[Col.FTP.value] != 'F':
                 record[Col.FTP.value] = 'N'
+        elif rc == -1:
+            Log().logger.error(
+                '[ftp] FTPDownloadError: Cannot proceed with dataset: ' +
+                record[Col.DSN.value])
+            status = 'FAILED'
         else:
             status = 'FAILED'
 
@@ -266,7 +281,7 @@ class FTPJob(Job):
 
         return rc
 
-    def run(self, record):
+    def run(self, _, record):
         """Performs all the steps to download datasets using FTP and updates the CSV file.
 
             It first run the analyze method to check if the given dataset is eligible for download. Then, it executes the FTP command to download it and updates the FTP status (success or fail) at the same time. Finally, it writes the changes to the CSV file.
