@@ -28,3 +28,4 @@ class Job(object):
         """Initializes the only attribute of the class.
             """
         self._storage_resource = storage_resource
+        self._gdg = None

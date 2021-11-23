@@ -24,9 +24,11 @@ class GDG(object):
         This class contains a run method that executes all the steps of the job. It handles all tasks related to dataset migration which mainly depends on the dataset organization, the DSORG column of the CSV file.
 
         Attributes:
+            _index {integer} -- The position of the record in the Context().records list.
             _record {list} -- The given migration record containing dataset info.
-            _base {string} -- GDG base name.
+            _base {string} -- The GDG base name.
             _generations {2D-list} -- The FTP command output, one element of the list being one line, one line corresponding to one dataset info.
+            _generations_count {integer} -- The number of generations successfully processed.
             
         Methods:
             __init__(record) -- Initializes all attributes of the class.
@@ -36,13 +38,16 @@ class GDG(object):
             get_dataset_records() -- Performs all the steps to exploit Mainframe info for GDG datasets only, and updates the migration records accordingly.
     """
 
-    def __init__(self, record):
+    def __init__(self, index, record):
         """Initializes all attributes of the class.
         """
+        self._index = index
         self._record = record
+
         self._base = record[Col.DSN.value]
 
         self._generations = []
+        self._generations_count = 0
 
     def _recall(self, dataset_name):
         """Executes FTP command to make dataset available to download.
@@ -72,7 +77,7 @@ class GDG(object):
                 line_number {integer} -- The generation number, with a certain shift to match the appropriate line in the FTP command output.
 
             Returns:
-                list --
+                list -- The new list of parameters extracted from the FTP command after the recall.
             """
         Log().logger.info('[gdg] Dataset marked as "Migrated"')
         record[Col.VOLSER.value] = fields[0]
@@ -85,7 +90,7 @@ class GDG(object):
 
         if rc == 0:
             self._generations = stdout.splitlines()
-            if len(self._generations) > 0:
+            if len(self._generations) > 1:
                 fields = self._generations[line_number].split()
             else:
                 Log().logger.debug('[gdg] FTP result empty')
@@ -120,109 +125,131 @@ class GDG(object):
         Log().logger.debug('[gdg] ' + ftp_command)
         stdout, _, rc = Utils().execute_ftp_command(ftp_command)
 
-        generations_count = 0
+        failed = False
 
         if rc == 0:
             self._generations = stdout.splitlines()
             if len(self._generations) > 0:
-
                 for i in range(len(self._generations) - 1, -1, -1):
                     fields = self._generations[i].split()
+
                     if len(fields) > 0:
                         if bool(re.match(r"G[0-9]{4}V[0-9]{2}", fields[-1])):
 
-                            # Latest generation
-                            if generations_count == 0:
-                                self._record[Col.DSN.value] += '.' + fields[-1]
-                                Log().logger.debug(
-                                    '[gdg] Current generation being processed: '
-                                    + self._record[Col.DSN.value])
+                            generation_record = ['' for _ in range(len(Col))]
+                            generation_record[
+                                Col.DSN.value] = self._base + '.' + fields[-1]
+                            Log().logger.info(
+                                '[gdg] Current generation being processed: ' +
+                                generation_record[Col.DSN.value])
 
-                                if fields[0] == 'Migrated':
-                                    fields = self._get_migrated(
-                                        self._record, fields, i)
+                            if fields[0] == 'Migrated':
+                                fields = self._get_migrated(
+                                    self._record, fields, i)
 
-                                if len(fields) > 7:
-                                    self._update_record(fields, self._record)
-                                    status = 'SUCCESS'
+                            # New evaluation of len(fields) required after migrated update
+                            if len(fields) == 0:
+                                Log().logger.info(
+                                    '[listcat] Fields still empty after recall')
+                                status = 'FAILED'
+
+                            elif len(fields) > 1:
+                                status = 'SUCCESS'
+
+                                if fields[1] == 'Tape':
+                                    Log().logger.info(
+                                        '[gdg] Generation in "Tape" volume')
+                                    generation_record[
+                                        Col.VOLSER.value] = fields[1]
+                                elif len(fields) > 7:
+                                    self._update_record(generation_record,
+                                                        fields)
                                 else:
-                                    Log().logger.debug(
-                                        '[gdg] Fields incomplete to get data')
+                                    Log().logger.info(
+                                        '[listcat] Scenario not supported')
                                     status = 'FAILED'
 
-                                Log().logger.debug(
-                                    'LISTCAT GDG LATEST GENERATION ' + status)
-                                generations_count += 1
-
-                            # Older generations
                             else:
-                                generation_record = [
-                                    '' for _ in range(len(Col))
-                                ]
-                                generation_record[
-                                    Col.DSN.
-                                    value] = self._base + '.' + fields[-1]
+                                Log().logger.info('[gdg] Fields incomplete')
+                                status = 'FAILED'
+                                failed = True
+
+                            if status == 'SUCCESS':
                                 Log().logger.debug(
-                                    '[gdg] Current generation being processed: '
-                                    + generation_record[Col.DSN.value])
+                                    '[gdg] Adding new record for generation: ' +
+                                    generation_record[Col.DSN.value])
 
-                                if fields[0] == 'Migrated':
-                                    fields = self._get_migrated(
-                                        generation_record, fields, i)
+                                new_record = DatasetRecord(Col)
+                                new_record.columns = generation_record
 
-                                if len(fields) > 7:
-                                    self._update_record(fields,
-                                                        generation_record)
-                                    new_record = DatasetRecord(Col)
-                                    new_record.columns = generation_record
-                                    Log().logger.debug(
-                                        '[gdg] Adding new record for older generation: '
-                                        + generation_record[Col.DSN.value])
-                                    Context().records.append(new_record)
-                                    status = 'SUCCESS'
-                                else:
-                                    Log().logger.debug(
-                                        '[gdg] Fields incomplete to get data')
-                                    status = 'FAILED'
+                                self._generations_count += 1
+                                Context().records.insert(
+                                    self._index + self._generations_count,
+                                    new_record)
 
-                                Log().logger.debug(
-                                    'LISTCAT GDG OLDER GENERATIONS ' + status)
-                                generations_count += 1
+                            Log().logger.info('LISTCAT GDG GENERATION ' +
+                                              status)
 
-                        elif fields[-1] == 'Dsname' and generations_count > 0:
+                        elif fields[
+                                -1] == 'Dsname' and self._generations_count > 0:
                             Log().logger.info('[gdg] Oldest generation reached')
                             status = 'SUCCESS'
                             rc = 0
                             break
-                        
-                        elif fields[-1] == 'Dsname' and generations_count == 0:
-                            Log().logger.info('[gdg] No generation found for given GDG base')
+                        elif fields[
+                                -1] == 'Dsname' and self._generations_count == 0 and failed is False:
+                            Log().logger.info(
+                                '[gdg] No generation found for given GDG base')
                             status = 'SUCCESS'
                             rc = 0
                             break
-                        
+                        elif fields[
+                                -1] == 'Dsname' and self._generations_count == 0 and failed is True:
+                            Log().logger.info(
+                                '[gdg] Generations found but all dataset info retrievals failed'
+                            )
+                            status = 'FAILED'
+                            rc = -1
+                            break
                         else:
                             Log().logger.debug(
-                                '[gdg] Dataset name pattern incorrect: ' +
+                                '[gdg] Dataset name pattern not supported: ' +
                                 fields[-1])
                             Log().logger.debug('[gdg] Skipping generation')
                             continue
                     else:
-                        Log().logger.debug('[gdg] Fields empty')
+                        Log().logger.info('[gdg] Fields empty')
                         continue
 
-                    if generations_count >= Context().generations:
+                    if self._generations_count >= Context().generations:
                         Log().logger.info(
                             '[gdg] Max number of generations reached')
+                        status = 'SUCCESS'
                         rc = 0
                         break
             else:
-                Log().logger.debug('[gdg] FTP result empty')
+                Log().logger.info('[gdg] FTP result empty')
                 status = 'FAILED'
                 rc = -1
+        elif rc == -1:
+            Log().logger.error('[listcat] FTPListcatError: No such dataset on Mainframe: ' + self._base)
+            status = 'FAILED'
         else:
             status = 'FAILED'
 
-        Log().logger.debug('LISTCAT GDG ' + status)
+        Log().logger.info('LISTCAT GDG ' + status)
 
         return rc
+
+    def update_listcat_result(self):
+        """
+            """
+        for i in range(self._index + 1,
+                       self._index + 1 + self._generations_count, 1):
+            generation_record = Context().records[i].columns
+            generation_record[Col.COPYBOOK.value] = self._record[
+                Col.COPYBOOK.value]
+            generation_record[Col.LISTCAT.value] = self._record[
+                Col.LISTCAT.value]
+            generation_record[Col.LISTCATDATE.value] = self._record[
+                Col.LISTCATDATE.value]
