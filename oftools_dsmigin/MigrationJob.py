@@ -279,6 +279,7 @@ class MigrationJob(Job):
                 options += ' -b ' + record[Col.BLKSIZE.value]
                 options += ' -f L'
                 options += ' -sosi 6'
+                options += ' -z'
                 options += Context().conversion
                 options += Context().force
 
@@ -329,6 +330,7 @@ class MigrationJob(Job):
                 else:
                     options += ' -f ' + record[Col.RECFM.value]
                 options += ' -sosi 6'
+                options += ' -z'
                 options += Context().force
 
                 dsmigin_command = 'dsmigin ' + src_file + ' ' + dst_file + options
@@ -384,6 +386,7 @@ class MigrationJob(Job):
         options += ' -b ' + record[Col.BLKSIZE.value]
         options += ' -o ' + record[Col.DSORG.value]
         options += ' -sosi 6'
+        options += ' -z'
         options += Context().conversion
         options += Context().force
 
@@ -467,6 +470,7 @@ class MigrationJob(Job):
         options += ' -l ' + record[Col.MAXLRECL.value]
         options += ' -R'
         options += ' -sosi 6'
+        options += ' -z'
         options += Context().conversion
         options += Context().force
 
