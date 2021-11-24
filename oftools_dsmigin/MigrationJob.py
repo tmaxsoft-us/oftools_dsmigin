@@ -193,13 +193,14 @@ class MigrationJob(Job):
             """
         rc = 0
 
-        copybook_path = Context().copybooks_directory + '/' + record[Col.COPYBOOK.value]
+        copybook_path = Context().copybooks_directory + '/' + record[
+            Col.COPYBOOK.value]
         cobgensch_command = 'cobgensch ' + copybook_path
         cobgensch_command = Utils().format_command(cobgensch_command)
         _, _, rc = Utils().execute_shell_command(cobgensch_command)
 
-        # copy the copybook to tsam copybook directory
-        if rc is 0:
+        # Copy the copybook to tsam copybook directory
+        if rc == 0:
             tsam_path = os.path.expandvars('$OPENFRAME_HOME/tsam/copybook')
             rc = Utils().copy_file(copybook_path, tsam_path)
 
@@ -460,13 +461,14 @@ class MigrationJob(Job):
         idcams_define_command = Utils().format_command(idcams_define_command)
         _, _, rc = Utils().execute_shell_command(idcams_define_command)
 
-        # retry with -O option if failed
-        if rc is not 0:
-             options += ' -O'
-             idcams_define_command = 'idcams define' + ' -n ' + src_file + options
-             idcams_define_command = Utils().format_command(idcams_define_command)
-             _, _, rc = Utils().execute_shell_command(idcams_define_command)
-        
+        # Retry with -O option if failed
+        if rc != 0:
+            options += ' -O'
+            idcams_define_command = 'idcams define' + ' -n ' + src_file + options
+            idcams_define_command = Utils().format_command(
+                idcams_define_command)
+            _, _, rc = Utils().execute_shell_command(idcams_define_command)
+
         # dsmigin command
         src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
         if Context().conversion == ' -C ':
