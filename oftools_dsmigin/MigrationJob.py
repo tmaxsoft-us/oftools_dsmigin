@@ -202,7 +202,7 @@ class MigrationJob(Job):
         if rc is 0:
             tsam_path = os.path.expandvars('$OPENFRAME_HOME/tsam/copybook')
             rc = Utils().copy_file(copybook_path, tsam_path)
-            
+
         return rc
 
     def _is_in_openframe(self, dsn):
@@ -437,7 +437,6 @@ class MigrationJob(Job):
         options += ' -k ' + record[Col.KEYLEN.value]
         options += ',' + record[Col.KEYOFF.value]
         options += ' -t CL'
-        options += ' -O'
 
         if 'CATALOG' in Context().enable_column_list:
             Log().logger.info('[migration] Using column value for CATALOG: ' +
@@ -461,6 +460,13 @@ class MigrationJob(Job):
         idcams_define_command = Utils().format_command(idcams_define_command)
         _, _, rc = Utils().execute_shell_command(idcams_define_command)
 
+        # retry with -O option if failed
+        if rc is not 0:
+             options += ' -O'
+             idcams_define_command = 'idcams define' + ' -n ' + src_file + options
+             idcams_define_command = Utils().format_command(idcams_define_command)
+             _, _, rc = Utils().execute_shell_command(idcams_define_command)
+        
         # dsmigin command
         src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
         if Context().conversion == ' -C ':
