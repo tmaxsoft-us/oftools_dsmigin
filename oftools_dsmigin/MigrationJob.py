@@ -193,11 +193,16 @@ class MigrationJob(Job):
             """
         rc = 0
 
-        cobgensch_command = 'cobgensch ' + Context().copybooks_directory
-        cobgensch_command += '/' + record[Col.COPYBOOK.value]
+        copybook_path = Context().copybooks_directory + '/' + record[Col.COPYBOOK.value]
+        cobgensch_command = 'cobgensch ' + copybook_path
         cobgensch_command = Utils().format_command(cobgensch_command)
         _, _, rc = Utils().execute_shell_command(cobgensch_command)
 
+        # copy the copybook to tsam copybook directory
+        if rc is 0:
+            tsam_path = os.path.expandvars('$OPENFRAME_HOME/tsam/copybook')
+            rc = Utils().copy_file(copybook_path, tsam_path)
+            
         return rc
 
     def _is_in_openframe(self, dsn):
