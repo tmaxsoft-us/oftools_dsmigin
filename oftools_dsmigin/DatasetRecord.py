@@ -4,6 +4,7 @@
     """
 
 # Generic/Built-in modules
+import re
 
 # Third-party modules
 
@@ -39,4 +40,4 @@ class DatasetRecord(object):
         """Setter method for the attribute _columns.
             """
         for i in range(len(columns)):
-            self._columns[i] = columns[i].replace(' ', '')
+            self._columns[i] = re.sub(r"[\n\t\s]*", "", columns[i])
