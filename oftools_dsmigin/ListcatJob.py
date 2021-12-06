@@ -179,7 +179,7 @@ class ListcatJob(Job):
 
                     elif len(fields) > 1:
                         status = 'SUCCESS'
-                        record[Col.COPYBOOK.value] = record[Col.DSN.value] + '.cpy'
+                        # record[Col.COPYBOOK.value] = record[Col.DSN.value] + '.cpy'
 
                         if fields[1] == 'Tape':
                             Log().logger.info(
