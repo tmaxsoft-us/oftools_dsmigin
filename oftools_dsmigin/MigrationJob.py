@@ -333,6 +333,8 @@ class MigrationJob(Job):
                         Col.LRECL.value] == '80' and record[
                             Col.COPYBOOK.value] == 'L_80.convcpy':
                     options += ' -f L '
+                if record[Col.RECFM.value] == 'VBM':
+                    options += ' -f VB'
                 else:
                     options += ' -f ' + record[Col.RECFM.value]
                 options += ' -sosi 6'
@@ -387,7 +389,10 @@ class MigrationJob(Job):
         options = ' -e ' + Context().encoding_code
         options += ' -s ' + record[Col.COPYBOOK.value].rsplit('.',
                                                               1)[0] + '.conv'
-        options += ' -f ' + record[Col.RECFM.value]
+        if record[Col.RECFM.value] == 'VBM':
+            options += ' -f VB'
+        else:
+            options += ' -f ' + record[Col.RECFM.value]
         options += ' -l ' + record[Col.LRECL.value]
         options += ' -b ' + record[Col.BLKSIZE.value]
         options += ' -o ' + record[Col.DSORG.value]
@@ -479,7 +484,10 @@ class MigrationJob(Job):
         options = ' -e ' + Context().encoding_code
         options += ' -s ' + record[Col.COPYBOOK.value].rsplit('.',
                                                               1)[0] + '.conv'
-        options += ' -f ' + record[Col.RECFM.value]
+        if record[Col.RECFM.value] == 'VBM':
+            options += ' -f VB'
+        else:
+            options += ' -f ' + record[Col.RECFM.value]
         options += ' -l ' + record[Col.MAXLRECL.value]
         options += ' -R'
         options += ' -sosi 6'
