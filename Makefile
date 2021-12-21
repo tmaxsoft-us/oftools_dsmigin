@@ -1,6 +1,9 @@
 init:
 	pip3 install -r requirements.txt
 
+init_user:
+	pip3 install -r requirements.txt --user
+
 build:
 	python3 setup.py sdist
 
@@ -11,13 +14,17 @@ install:
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
 
+install_user:
+	python3 setup.py bdist_wheel
+	pip3 install dist/*.whl --user
+
 install_diff:
 	python3 setup.py bdist_wheel
 	python3 -m pip install dist/*.whl
 
-install_user:
+install_user_diff:
 	python3 setup.py bdist_wheel
-	pip3 install dist/*.whl --user
+	python3 -m pip install dist/*.whl --user
 
 uninstall:
 	pip3 uninstall -y oftools-dsmigin
