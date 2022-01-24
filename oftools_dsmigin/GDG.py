@@ -62,7 +62,7 @@ class GDG(object):
             """
         Log().logger.info('[listcat] Recalling migrated dataset: ' +
                           dataset_name)
-        ftp_command = 'cd ' + dataset_name
+        ftp_command = 'cd ' + self._base + '.' + dataset_name
         Log().logger.debug('[listcat] ' + ftp_command)
         _, _, rc = Utils().execute_ftp_command(ftp_command)
 
