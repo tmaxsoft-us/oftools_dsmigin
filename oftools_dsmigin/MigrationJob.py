@@ -362,21 +362,22 @@ class MigrationJob(Job):
             """
         rc = 0
 
-        if Context().force == '':
-            is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
-            if is_in_openframe:
-                Log().logger.info(
-                    '[migration] Given dataset already exist in OpenFrame: Skipping migration'
-                )
-                rc = 1
-                return rc
+        if Context().conversion == '':
+            if Context().force == '':
+                is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
+                if is_in_openframe:
+                    Log().logger.info(
+                        '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+                    )
+                    rc = 1
+                    return rc
 
-        # dsdelete command
-        src_file = record[Col.DSN.value]
-        dsdelete_command = 'dsdelete ' + src_file
+            # dsdelete command
+            src_file = record[Col.DSN.value]
+            dsdelete_command = 'dsdelete ' + src_file
 
-        dsdelete_command = Utils().format_command(dsdelete_command)
-        _, _, rc = Utils().execute_shell_command(dsdelete_command)
+            dsdelete_command = Utils().format_command(dsdelete_command)
+            _, _, rc = Utils().execute_shell_command(dsdelete_command)
 
         # dsmigin command
         src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
@@ -418,66 +419,67 @@ class MigrationJob(Job):
             """
         rc = 0
 
-        if Context().force == '':
-            is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
-            if is_in_openframe:
-                Log().logger.info(
-                    '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+        if Context().conversion == '':
+            if Context().force == '':
+                is_in_openframe = self._is_in_openframe(record[Col.DSN.value])
+                if is_in_openframe:
+                    Log().logger.info(
+                        '[migration] Given dataset already exist in OpenFrame: Skipping migration'
+                    )
+                    rc = 1
+                    return rc
+
+            # idcams delete
+            src_file = record[Col.DSN.value]
+            options = ' -t CL'
+
+            idcams_delete_command = 'idcams delete' + ' -n ' + src_file + options
+            idcams_delete_command = Utils().format_command(idcams_delete_command)
+            _, _, rc = Utils().execute_shell_command(idcams_delete_command)
+
+            # idcams define
+            src_file = record[Col.DSN.value]
+            options = ' -o ' + record[Col.VSAM.value]
+            options += ' -l ' + record[Col.AVGLRECL.value]
+            options += ',' + record[Col.MAXLRECL.value]
+            options += ' -k ' + record[Col.KEYLEN.value]
+            options += ',' + record[Col.KEYOFF.value]
+            options += ' -t CL'
+
+            if 'CATALOG' in Context().enable_column_list:
+                Log().logger.info('[migration] Using column value for CATALOG: ' +
+                                record[Col.CATALOG.value])
+                options += ' -c ' + record[Col.CATALOG.value]
+            else:
+                Log().logger.debug(
+                    '[migration] Using default value for CATALOG: SYS1.MASTER.ICFCAT'
                 )
-                rc = 1
-                return rc
+                options += ' -c SYS1.MASTER.ICFCAT'
+            if 'VOLSER' in Context().enable_column_list:
+                Log().logger.info('[migration] Using column value for VOLSER: ' +
+                                record[Col.VOLSER.value])
+                options += ' -v ' + record[Col.VOLSER.value]
+            else:
+                Log().logger.debug(
+                    '[migration] Using default value for VOLSER: DEFVOL')
+                options += ' -v DEFVOL'
 
-        # idcams delete
-        src_file = record[Col.DSN.value]
-        options = ' -t CL'
-
-        idcams_delete_command = 'idcams delete' + ' -n ' + src_file + options
-        idcams_delete_command = Utils().format_command(idcams_delete_command)
-        _, _, rc = Utils().execute_shell_command(idcams_delete_command)
-
-        # idcams define
-        src_file = record[Col.DSN.value]
-        options = ' -o ' + record[Col.VSAM.value]
-        options += ' -l ' + record[Col.AVGLRECL.value]
-        options += ',' + record[Col.MAXLRECL.value]
-        options += ' -k ' + record[Col.KEYLEN.value]
-        options += ',' + record[Col.KEYOFF.value]
-        options += ' -t CL'
-
-        if 'CATALOG' in Context().enable_column_list:
-            Log().logger.info('[migration] Using column value for CATALOG: ' +
-                              record[Col.CATALOG.value])
-            options += ' -c ' + record[Col.CATALOG.value]
-        else:
-            Log().logger.debug(
-                '[migration] Using default value for CATALOG: SYS1.MASTER.ICFCAT'
-            )
-            options += ' -c SYS1.MASTER.ICFCAT'
-        if 'VOLSER' in Context().enable_column_list:
-            Log().logger.info('[migration] Using column value for VOLSER: ' +
-                              record[Col.VOLSER.value])
-            options += ' -v ' + record[Col.VOLSER.value]
-        else:
-            Log().logger.debug(
-                '[migration] Using default value for VOLSER: DEFVOL')
-            options += ' -v DEFVOL'
-
-        idcams_define_command = 'idcams define' + ' -n ' + src_file + options
-        idcams_define_command = Utils().format_command(idcams_define_command)
-        _, _, rc = Utils().execute_shell_command(idcams_define_command)
-
-        # Retry with -O option if failed
-        if rc != 0:
-            options += ' -O'
             idcams_define_command = 'idcams define' + ' -n ' + src_file + options
-            idcams_define_command = Utils().format_command(
-                idcams_define_command)
+            idcams_define_command = Utils().format_command(idcams_define_command)
             _, _, rc = Utils().execute_shell_command(idcams_define_command)
+
+            # Retry with -O option if failed
+            if rc != 0:
+                options += ' -O'
+                idcams_define_command = 'idcams define' + ' -n ' + src_file + options
+                idcams_define_command = Utils().format_command(
+                    idcams_define_command)
+                _, _, rc = Utils().execute_shell_command(idcams_define_command)
 
         # dsmigin command
         src_file = Context().datasets_directory + '/' + record[Col.DSN.value]
         if Context().conversion == ' -C ':
-            dst_file = Context().conversion_directory + '/' + src_file
+            dst_file = Context().conversion_directory + '/' + record[Col.DSN.value]
         else:
             dst_file = record[Col.DSN.value]
 
