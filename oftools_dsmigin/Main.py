@@ -231,6 +231,15 @@ class Main(object):
                               required=False,
                               type=str)
 
+        optional.add_argument(
+            '-T',
+            '--test',
+            action='store_true',
+            dest='test',
+            help=
+            'flag to modify the behavior of dsmigin, executes conversion only and delete the created file',
+            required=False)
+
         # Other arguments
         others.add_argument('-h',
                             '--help',
@@ -320,6 +329,7 @@ class Main(object):
                 Context().enable_column_list = args.column_names
                 Context().encoding_code = args.encoding_code
                 Context().conversion = args.conversion
+                Context().test = args.test
                 Context().force = args.force
                 job = job_factory.create('migration')
                 jobs.append(job)

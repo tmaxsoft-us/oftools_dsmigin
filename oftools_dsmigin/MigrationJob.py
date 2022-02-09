@@ -587,7 +587,9 @@ class MigrationJob(Job):
         if rc == 0:
             self._storage_resource.write()
 
-        # self._clear_conversion_directory()
+        if Context().test:
+            self._clear_conversion_directory()
+            
         Log().logger.debug('[migration] Ending Job')
 
         return rc

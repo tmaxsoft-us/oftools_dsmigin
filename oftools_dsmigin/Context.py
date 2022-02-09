@@ -99,6 +99,7 @@ class Context(object, metaclass=SingletonMeta):
 
         self._enable_column_list = []
         self._conversion = ''
+        self._test = ''
         self._encoding_code = ''
         self._force = ''
 
@@ -413,6 +414,24 @@ class Context(object, metaclass=SingletonMeta):
         if conversion is not None:
             if conversion is True:
                 self._conversion = ' -C '
+
+    @property
+    def test(self):
+        """Getter method for the attribute _test.
+
+            Returns:
+                string -- the value for _test.
+            """
+        return self._test
+
+    @test.setter
+    def test(self, test):
+        """Setter method for the attribute _test.
+            """
+        if test is not None:
+            if test is True:
+                self._conversion = ' -C '
+                self._test = test
 
     @property
     def encoding_code(self):
