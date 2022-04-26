@@ -2,23 +2,23 @@
 Thumbs.db
 
 # Mac
-.DS_Store
 .AppleDouble
-.LSOverride
+.com.apple.timemachine.donotpresent
 .DocumentRevisions-V100
+.DS_Store
 .fseventsd
+.LSOverride
 .Spotlight-V100
 .TemporaryItems
 .Trashes
 .VolumeIcon.icns
-.com.apple.timemachine.donotpresent
 
 # Visual Studio Code - General
-.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
 !.vscode/settings.json
 !.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.code-workspace
 
 # Visual Studio Code - local history
@@ -33,43 +33,42 @@ __pycache__/
 *.so
 
 # Python - distribution / packaging
+.eggs/
+.idea/
+.installed.cfg
 .Python
+*.egg
+*.egg-info/
+AUTHORS
 build/
+ChangeLog
 develop-eggs/
 dist/
 downloads/
-eggs/
-.eggs/
 lib/
 lib64/
 parts/
 sdist/
+share/python-wheels/
 var/
 wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
 # Python - unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+.cache
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
+.hypothesis/
+.nox/
+.pytest_cache/
+.tox/
 *.cover
 *.py,cover
-.hypothesis/
-.pytest_cache/
 cover/
+coverage.xml
+htmlcov/
+nosetests.xml
 
 # Files
-
 *.html
 *.pdf
-*.pyc
 *.swp
