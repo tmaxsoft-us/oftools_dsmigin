@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """This module handles the enumeration of all the column names for the listcat CSV file.
 
-  Typical usage example:
-      records[LCol.DSN.name] = 'DSN'
-      records[LCol.DSN.value] = 0
-  """
+Typical usage example:
+    records[LCol.DSN.name] = 'DSN'
+    records[LCol.DSN.value] = 0
+"""
 
 # Generic/Built-in modules
 import enum

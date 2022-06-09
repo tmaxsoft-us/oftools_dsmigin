@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Main module of OpenFrame Tools Dataset Migration.
-    """
+"""
 
 # Generic/Built-in modules
 # import argcomplete
 import argparse
+import signal
 import sys
 import traceback
 # import logging
@@ -16,11 +17,15 @@ import traceback
 from . import __version__
 from .Context import Context
 from .CSV import CSV
+from .enums.MessageEnum import ErrorM, LogM
+from .handlers.FileHandler import FileHandler
 from .JobFactory import JobFactory
 from .Listcat import Listcat
 from .Log import Log
 # from .Statistics import Statistics
-from .Utils import Utils
+
+# Global variables
+INTERRUPT = False
 
 
 def main():
@@ -28,27 +33,30 @@ def main():
 
 
 class Main(object):
-    """Main class containing the methods for parsing the command arguments and running OpenFrame Tools 
-    Dataset Migration.
+    """Main class containing the methods for parsing the command arguments and running OpenFrame Tools Dataset Migration.
 
-        Methods:
-            _parse_arg() -- Parsing command-line options.
-            _create_jobs(args, csv) -- Creates job depending on the input parameters.
-            run() -- Perform to execute jobs of OpenFrame Tools Dataset Migration.
-        """
+    Methods:
+        _parse_arg() -- Parses command-line options.
+        _signal_handler(signum, frame) -- Handles signal SIGQUIT for the program execution.
+        _create_jobs(args, csv) -- Creates job depending on the input parameters.
+        run() -- Perform all the steps to execute jobs of oftools_dsmigin.
+    """
 
-    def _parse_arg(self):
+    @staticmethod
+    def _parse_arg():
         """Parses command-line options.
 
-            The program defines what arguments it requires, and argparse will figure out how to parse 
-            those out of sys.argv. The argparse module also automatically generates help, usage 
-            messages and issues errors when users give the program invalid arguments.
+        The program defines what arguments it requires, and argparse will figure out how to parse 
+        those out of sys.argv. The argparse module also automatically generates help, usage 
+        messages and issues errors when users give the program invalid arguments.
 
-            Returns:
-                ArgumentParser object -- Program input arguments.
-            """
+        Returns:
+            args {ArgumentParser} -- Program input arguments.
+        """
         parser = argparse.ArgumentParser(
-            add_help=False, description='OpenFrame Tools Dataset Migration')
+            add_help=False,
+            description='OpenFrame Tools Dataset Migration',
+            formatter_class=argparse.RawTextHelpFormatter)
 
         parser._action_groups.pop()
         required = parser.add_argument_group('Required arguments')
@@ -63,8 +71,8 @@ class Main(object):
             action='store',  # optional because default action is 'store'
             dest='csv',
             help=
-            'name of the CSV file, contains the datasets and their parameters',
-            metavar='CSV',
+            'CSV file name, contains the datasets list and their parameters',
+            metavar='FILE',
             required=True,
             type=str)
 
@@ -72,7 +80,7 @@ class Main(object):
                               '--working-directory',
                               action='store',
                               dest='working_directory',
-                              help='path to the working directory',
+                              help='working directory name',
                               metavar='DIRECTORY',
                               required=True,
                               type=str)
@@ -84,7 +92,7 @@ class Main(object):
             action='store_true',
             dest='listcat',
             help=
-            'flag to trigger listcat execution, retrieve dataset info from the Mainframe as well as VSAM dataset info from a listcat file',
+            'flag used to trigger listcat execution, retrieve dataset info from Mainframe as well as VSAM dataset info from a listcat file',
             required=False)
 
         jobs.add_argument(
@@ -93,7 +101,7 @@ class Main(object):
             action='store_true',
             dest='ftp',
             help=
-            'flag to trigger FTP execution, download datasets from Mainframe',
+            'flag used to trigger FTP execution, download datasets from Mainframe',
             required=False)
 
         jobs.add_argument(
@@ -102,7 +110,7 @@ class Main(object):
             action='store_true',
             dest='migration',
             help=
-            '''flag to trigger dsmigin, executes dataset conversion and generation in the OpenFrame environment to start dataset migration''',
+            'flag used to trigger dsmigin, execute dataset conversion and generation in the OpenFrame environment',
             required=False)
 
         # Optional arguments
@@ -117,29 +125,28 @@ class Main(object):
             '--conversion',
             action='store_true',
             dest='conversion',
-            help=
-            'flag to modify the behavior of dsmigin, executes conversion only',
+            help='flag used to execute conversion only in dataset migration',
             required=False)
 
         optional.add_argument(
             '-e',
-            '--encoding_code',
+            '--encoding-code',
             action='store',
             choices=['US'],
             default='US',
             dest='encoding_code',
             help=
-            'encoding code for dataset migration, potential values: US. (default: US)',
+            'encoding code for dataset migration, potential values:\n- US (default)',
             metavar='CODE',
             required=False,
             type=str)
 
         optional.add_argument(
-            '--enable_column',
+            '--enable-column',
             action='store',
-            dest='column_names',
+            dest='enable_column',
             help=
-            'list of CSV columns to enable instead of the default value, separated with :. Supported columns: VOLSER, CATALOG',
+            'enable CSV columns instead of the default value, colon-separated. Supported columns:\n- CATALOG (default is SYS1.MASTER.ICFCAT)\n- VOLSER (default is DEFVOL)',
             metavar='COLUMN',
             required=False,
             type=str)
@@ -148,7 +155,7 @@ class Main(object):
                               '--force',
                               action='store_true',
                               dest='force',
-                              help='flag to force dataset migration',
+                              help='flag used to force dataset migration',
                               required=False)
 
         optional.add_argument(
@@ -157,7 +164,7 @@ class Main(object):
             action='store',
             dest='generations',
             help=
-            'number of generations to be processed, specifically for GDG datasets',
+            'number of generations to be processed specifically for GDG datasets',
             metavar='GENERATIONS',
             required=False,
             type=int)
@@ -168,8 +175,8 @@ class Main(object):
             action='store',
             dest='ip_address',
             help=
-            'ip address required for any command that involves FTP connection to Mainframe (listcat and ftp)',
-            metavar='IP_ADDRESS',
+            'ip address required for any command that involves a connection to Mainframe (listcat and ftp)',
+            metavar='ADDRESS',
             required=False,
             type=str)
 
@@ -177,7 +184,8 @@ class Main(object):
             '--init',
             action='store_true',
             dest='init',
-            help='initializes the CSV file and the working directory specified',
+            help=
+            'flag used to initialize the CSV file and the working directory specified',
             required=False)
 
         optional.add_argument(
@@ -185,7 +193,7 @@ class Main(object):
             action='store',
             dest='listcat_gen',
             help=
-            'appends datasets record from a text file to a CSV file for listcat information',
+            'text file name to append datasets record to a CSV file for listcat information',
             metavar='FILE',
             required=False,
             type=str)
@@ -198,7 +206,7 @@ class Main(object):
             default='INFO',
             dest='log_level',
             help=
-            'log level, potential values: DEBUG, INFO, WARNING, ERROR, CRITICAL. (default: INFO)',
+            'log level, potential values:\n- DEBUG\n- INFO (default)\n- WARNING\n- ERROR\n- CRITICAL',
             metavar='LEVEL',
             required=False,
             type=str)
@@ -222,14 +230,15 @@ class Main(object):
                               required=False,
                               type=str)
 
-        optional.add_argument('-t',
-                              '--tag',
-                              action='store',
-                              dest='tag',
-                              help='tag for the CSV backup and log file names',
-                              metavar='TAG',
-                              required=False,
-                              type=str)
+        optional.add_argument(
+            '-t',
+            '--tag',
+            action='store',
+            dest='tag',
+            help='add a tag to the CSV backup and log file names',
+            metavar='TAG',
+            required=False,
+            type=str)
 
         optional.add_argument(
             '-T',
@@ -237,7 +246,7 @@ class Main(object):
             action='store_true',
             dest='test',
             help=
-            'flag to modify the behavior of dsmigin, executes conversion only and delete the created file',
+            'flag used to modify the behavior of dsmigin, executes conversion only and delete the created file',
             required=False)
 
         # Other arguments
@@ -260,55 +269,55 @@ class Main(object):
         try:
             # argcomplete.autocomplete(parser)
             args = parser.parse_args()
-        except argparse.ArgumentError as e:
-            Log().logger.critical('ArgumentError: ' + str(e))
+        except argparse.ArgumentError as error:
+            Log().logger.critical(ErrorM.ARGUMENT.value % error)
+            Log().logger.critical(ErrorM.ABORT.value)
             sys.exit(-1)
 
         # Analyze CSV file, making sure a file with .csv extension is specified
-        try:
-            if args.csv:
-                status = Utils().check_file_extension(args.csv, 'csv')
-                if status is False:
-                    raise TypeError()
-        except TypeError:
-            Log().logger.critical(
-                'TypeError: Invalid -c, --csv option: Must be .csv extension')
+        is_valid_ext = FileHandler().check_extension(args.csv, 'csv')
+        if is_valid_ext is False:
+            Log().logger.critical(ErrorM.ABORT.value)
             sys.exit(-1)
 
-        # Analyze missing optional arguments
+        # Analyze optional arguments dependencies
         try:
             if args.listcat and args.ip_address is None:
                 raise Warning()
         except Warning:
-            Log().logger.warning(
-                'MissingArgumentWarning: Missing -i, --ip-address option: Skipping dataset information retrieval from Mainframe'
-            )
+            Log().logger.warning(ErrorM.MISSING_IP_WARNING.value)
 
         try:
             if args.ftp and args.ip_address is None:
                 raise SystemError()
         except SystemError:
-            Log().logger.critical(
-                'MissingArgumentError: Missing -i, --ip-address option: Must be specified for dataset download from Mainframe'
-            )
+            Log().logger.critical(ErrorM.MISSING_IP_ERROR.value)
             sys.exit(-1)
 
         return args
 
-    def _create_jobs(self, args, storage_resource):
+    @staticmethod
+    def _signal_handler(signum, frame):
+        """Handles signal SIGQUIT for the program execution.
+        """
+        global INTERRUPT
+        INTERRUPT = True
+        raise KeyboardInterrupt()
+
+    @staticmethod
+    def _create_jobs(args, storage_resource):
         """Creates job depending on the input parameters.
 
-            Arguments:
-                args {ArgParse object} -- Contains all the input parameters of the program.
-                storage_resource {Storage Resource object} -- Could be a CSV file or a database object, used to store dataset records.
+        Arguments:
+            args {ArgParse} -- Contains all the input parameters of the program.
+            storage_resource {Storage Resource} -- Could be a CSV file or a database object, used to store dataset records.
 
-            Raises:
-                #TODO Complete docstrings, maybe change the behavior to print traceback only with DEBUG as log level
+        Returns:
+            list[Job] -- List of Jobs.
 
-            Returns:
-                list -- List of jobs.
-            """
-        Log().logger.debug('Creating jobs')
+        Raises:
+            #TODO Complete docstring, maybe change the behavior to print traceback only with DEBUG as log level
+        """
         jobs = []
         job_factory = JobFactory(storage_resource)
 
@@ -326,101 +335,102 @@ class Main(object):
                 job = job_factory.create('ftp')
                 jobs.append(job)
             if args.migration:
-                Context().enable_column_list = args.column_names
-                Context().encoding_code = args.encoding_code
                 Context().conversion = args.conversion
-                Context().test = args.test
+                Context().enable_column_list = args.enable_column
+                Context().encoding_code = args.encoding_code
                 Context().force = args.force
+                Context().test = args.test
                 job = job_factory.create('migration')
                 jobs.append(job)
         except:
             traceback.print_exc()
-            Log().logger.error(
-                'Unexpected error detected during the job creation')
+            Log().logger.critical(ErrorM.JOB.value)
+            Log().logger.critical(ErrorM.ABORT.value)
             sys.exit(-1)
         else:
-            Log().logger.debug('Number of jobs created: ' + str(len(jobs)))
             return jobs
 
     def run(self):
         """Performs all the steps to execute jobs of oftools_dsmigin.
 
-            Returns:
-                integer -- General return code of the program.
-                
-            Raises:
-                KeyboardInterrupt -- Exception is raised if the user press Ctrl + C.
-            """
+        Returns:
+            integer -- General return code of the program.
+            
+        Raises:
+            KeyboardInterrupt -- Exception raised if the user press Ctrl + C.
+        """
         rc = 0
+        # Normal if there is an error on Windows, SIGQUIT only exist on Unix
+        signal.signal(signal.SIGQUIT, self._signal_handler)
+
         # For testing purposes. allow to remove logs when executing coverage
         # logging.disable(logging.CRITICAL)
         Log().open_stream()
+        Log().set_level(args.log_level)
+        Log().logger.debug(' '.join((arg for arg in sys.argv)))
 
         # Parse command-line options
         args = self._parse_arg()
 
-        # Set log level and log oftools_dsmigin command as DEBUG
-        Log().set_level(args.log_level)
-        Log().logger.debug(' '.join((arg for arg in sys.argv)))
-        Log().logger.debug('Starting OpenFrame Tools Dataset Migration')
-
         # Initialize variables for program execution
-        count_dataset = 0
-        Context().initialization = args.init
-        Context().max_datasets = args.number
+        Context().init = args.init
+        Context().number = args.number
         Context().tag = args.tag
         Context().working_directory = args.working_directory
-
-        # Initialize log file
-        log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
-        ).full_timestamp + '.log'
-        log_file_path = Context().log_directory + '/' + log_file_name
-        Log().open_file(log_file_path)
-
-        # CSV file initialization
-        storage_resource = CSV(args.csv)
-
-        # Listcat CSV file generation
-        if args.listcat_gen:
-            listcat = Listcat(args.listcat_gen)
-            listcat.generate_csv()
-
-        # Create jobs
-        jobs = self._create_jobs(args, storage_resource)
+        count_dataset = 0
 
         try:
-            if len(jobs) > 0:
+            # Initialize log file
+            log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
+            ).full_timestamp + '.log'
+            log_file_path = Context().log_directory + '/' + log_file_name
+            Log().open_file(log_file_path)
 
-                for i in range(len(Context().records)):
-                    record = Context().records[i].columns
+            # CSV file initialization
+            storage_resource = CSV(args.csv)
 
+            # Listcat CSV file generation
+            if args.listcat_gen:
+                listcat = Listcat(args.listcat_gen)
+                listcat.generate_csv()
+
+            # Create jobs
+            jobs = self._create_jobs(args, storage_resource)
+
+            for index, value in enumerate(Context().records):
+                try:
+                    # Initialization of variables before running the jobs
+                    record = value.columns
                     for job in jobs:
-                        rc = job.run(i, record)
-                        if rc != 0:
+                        rc = job.run(record, index)
+                        if rc == 0:
+                            storage_resource.write(index)
+                        else:
                             if rc == 1:
-                                Log().logger.debug('Skipping dataset: rc = 1')
+                                Log().logger.debug(LogM.MAIN_SKIP.value % rc)
                                 continue
                             else:
-                                Log().logger.error(
-                                    'An error occurred. Aborting program execution'
-                                )
+                                Log().logger.error(ErrorM.ABORT.value)
                                 break
 
                     if rc == 0:
                         count_dataset += 1
 
-                        if Context().max_datasets != 0:
-                            Log().logger.info('Current dataset count: ' +
-                                              str(count_dataset) + '/' +
-                                              str(Context().max_datasets))
-                            if count_dataset >= Context().max_datasets:
-                                Log().logger.info('Limit of dataset reached')
-                                Log().logger.info(
-                                    'Terminating program execution')
+                        if Context().number != 0:
+                            Log().logger.info(LogM.COUNT_MAX.value %
+                                              (count_dataset, Context().number))
+                            if count_dataset == Context().number:
+                                Log().logger.info(LogM.LIMIT.value)
+                                Log().logger.info(LogM.TERMINATE.value)
                                 break
                         else:
-                            Log().logger.info('Current dataset count: ' +
-                                              str(count_dataset))
+                            Log().logger.info(LogM.COUNT.value % count_dataset)
+
+                except KeyboardInterrupt:
+                    #TODO Find what goes here
+
+                    if INTERRUPT is True:
+                        raise KeyboardInterrupt()
 
                 # rc = statistics.run()
                 # if rc < 0:
@@ -440,8 +450,6 @@ class Main(object):
             Context().clear_all()
             Log().close_file()
             Log().close_stream()
-
-            raise KeyboardInterrupt()
 
         # Need to clear context completely and close log at the end of the execution
         storage_resource.format()

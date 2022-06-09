@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """This module handles the enumeration of all the column names for the migration CSV file, as well as the width of each column.
 
-    Typical usage example:
-        records[Col.DSN.name] = 'DSN'
-        records[Col.DSN.value] = 0
-    """
+Typical usage example:
+    records[Col.DSN.name] = 'DSN'
+    records[Col.DSN.value] = 0
+"""
 
 # Generic/Built-in modules
 import aenum
@@ -17,9 +17,9 @@ import enum
 
 
 @enum.unique
-class Col(enum.Enum):
+class MCol(enum.Enum):
     """Just an enumeration of all the columns we need in the migration CSV file.
-        """
+    """
     DSN = 0
     COPYBOOK = 1
     RECFM = 2
@@ -47,8 +47,7 @@ class Col(enum.Enum):
 
 class Width(aenum.Enum):
     """Just an enumeration of all the column widths we need in the migration CSV file.
-        """
-
+    """
     _settings_ = aenum.NoAlias
 
     DSN = 45
