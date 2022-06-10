@@ -57,8 +57,8 @@ class TestRead(object):
         assert Main().run() == 0
 
     @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
     @pytest.mark.xfail
+    @pytest.mark.skip(reason='Test not currently supported')
     def test_file_not_found(shared):
         """Test with ... which triggers the FileNotFoundError exception.
         """
@@ -72,8 +72,8 @@ class TestRead(object):
             Main().run()
 
     @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
     @pytest.mark.xfail
+    @pytest.mark.skip(reason='Test not currently supported')
     def test_index_error(shared):
         """Test with too many elements on one line of the CSV file which triggers the IndexError exception.
         """

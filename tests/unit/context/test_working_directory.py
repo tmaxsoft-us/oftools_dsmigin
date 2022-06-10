@@ -57,8 +57,8 @@ class TestWorkingDirectory(object):
         assert Main().run() == 0
 
     @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
     @pytest.mark.xfail
+    @pytest.mark.skip(reason='Test not currently supported')
     def test_file_not_found_error(shared):
         """Test with file instead of a directory for the working directory to trigger the FileNotFoundError exception.
         """

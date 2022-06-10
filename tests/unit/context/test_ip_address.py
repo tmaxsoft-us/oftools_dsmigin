@@ -74,8 +74,8 @@ class TestIPAddress(object):
         assert Main().run() == 0
 
     @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
     @pytest.mark.xfail
+    @pytest.mark.skip(reason='Test not currently supported')
     def test_ip_error(shared):
         """Test with an incorrect ip address.
         """

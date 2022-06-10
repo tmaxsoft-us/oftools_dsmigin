@@ -57,8 +57,8 @@ class TestNumber(object):
         assert Main().run() == 0
 
     @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
     @pytest.mark.xfail
+    @pytest.mark.skip(reason='Test not currently supported')
     def test_sign_error(shared):
         """Test with a negative value for the number option.
         """
