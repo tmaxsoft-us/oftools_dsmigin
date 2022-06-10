@@ -17,7 +17,9 @@ import traceback
 from . import __version__
 from .Context import Context
 from .CSV import CSV
+from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import ErrorM, LogM
+from .enums.MigrationEnum import Col
 from .handlers.FileHandler import FileHandler
 from .JobFactory import JobFactory
 from .Listcat import Listcat
@@ -119,6 +121,17 @@ class Main(object):
                               dest='clear',
                               help=argparse.SUPPRESS,
                               required=False)
+
+        optional.add_argument(
+            '-d',
+            '--dsn',
+            action='store',  # optional because default action is 'store'
+            dest='dsn',
+            help=
+            'colon-separated list of datasets to automatically add them to the CSV file',
+            metavar='FILE',
+            required=False,
+            type=str)
 
         optional.add_argument(
             '-C',
@@ -235,7 +248,7 @@ class Main(object):
             '--tag',
             action='store',
             dest='tag',
-            help='add a tag to the CSV backup and log file names',
+            help='add a tag to the name of the CSV backup and the log file',
             metavar='TAG',
             required=False,
             type=str)
@@ -388,6 +401,14 @@ class Main(object):
 
             # CSV file initialization
             storage_resource = CSV(args.csv)
+
+            # Adding manual dataset input to the records
+            if args.dsn:
+                dataset_names = args.dsn.split(':')
+                for dsn in dataset_names:
+                    record = DatasetRecord(Col)
+                    record.columns = [dsn]
+                    Context().records.append(record)
 
             # Listcat CSV file generation
             if args.listcat_gen:
