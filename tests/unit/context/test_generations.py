@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestGenerations(object):
-    """
+    """Test cases for the method generations.
 
     Fixtures:
         init_pwd

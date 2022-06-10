@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestCheckHeaders (object):
-    """
+    """Test cases for the method check_headers.
 
     Fixtures:
         init_pwd

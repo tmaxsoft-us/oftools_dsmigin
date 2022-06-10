@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestNumber(object):
-    """
+    """Test cases for the method number.
 
     Fixtures:
         init_pwd

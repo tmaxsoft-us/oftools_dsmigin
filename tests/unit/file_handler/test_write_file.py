@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestWriteFile(object):
-    """Test cases for the write_file method.
+    """Test cases for the method write_file.
 
     Fixtures:
         shared

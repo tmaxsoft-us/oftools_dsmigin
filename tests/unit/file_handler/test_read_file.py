@@ -16,7 +16,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestReadFile(object):
-    """Test cases for the read_file method.
+    """Test cases for the method read_file.
 
     Fixtures:
         init_pwd

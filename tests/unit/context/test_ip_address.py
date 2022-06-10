@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestIPAddress(object):
-    """
+    """Test cases for the method ip_address.
 
     Fixtures:
         init_pwd

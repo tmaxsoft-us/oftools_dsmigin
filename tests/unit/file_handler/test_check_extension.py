@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestCheckExtension(object):
-    """Test cases for the check_extension method.
+    """Test cases for the method check_extension.
 
     Fixtures:
         init_pwd

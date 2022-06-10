@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestWorkingDirectory(object):
-    """
+    """Test cases for the method working_directory.
 
     Fixtures:
         init_pwd

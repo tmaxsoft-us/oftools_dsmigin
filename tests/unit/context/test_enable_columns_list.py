@@ -15,7 +15,7 @@ from ....oftools_dsmigin.Main import Main
 
 
 class TestEnableColumnsList(object):
-    """
+    """Test cases for the method enable_columns_list.
 
     Fixtures:
         init_pwd
