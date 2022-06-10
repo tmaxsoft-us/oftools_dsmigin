@@ -19,7 +19,7 @@ from .Context import Context
 from .CSV import CSV
 from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import Col
+from .enums.MigrationEnum import MCol
 from .handlers.FileHandler import FileHandler
 from .JobFactory import JobFactory
 from .Listcat import Listcat
@@ -406,7 +406,7 @@ class Main(object):
             if args.dsn:
                 dataset_names = args.dsn.split(':')
                 for dsn in dataset_names:
-                    record = DatasetRecord(Col)
+                    record = DatasetRecord(MCol)
                     record.columns = [dsn]
                     Context().records.append(record)
 

@@ -14,13 +14,12 @@ import re
 from .Context import Context
 from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import Color, ErrorM, LogM
-from .enums.MigrationEnum import Col
+from .enums.MigrationEnum import MCol
 from .handlers.ShellHandler import ShellHandler
-from .ListcatJob import ListcatJob
 from .Log import Log
 
 
-class GDG(ListcatJob):
+class GDG(object):
     """A class used to run the Migration Job.
 
     This class contains a run method that executes all the steps of the job. It handles all tasks related to dataset migration which mainly depends on the dataset organization, the DSORG column of the CSV file.
@@ -47,7 +46,7 @@ class GDG(ListcatJob):
         self._index = index
         self._record = record
 
-        self._base = record[Col.DSN.value]
+        self._base = record[MCol.DSN.value]
 
         self._generations = []
         self._generations_count = 0
@@ -64,7 +63,7 @@ class GDG(ListcatJob):
             list -- The new list of parameters extracted from the FTP command after the recall.
         """
         Log().logger.info(LogM.MIGRATED.value % self._name)
-        record[Col.VOLSER.value] = fields[0]
+        record[MCol.VOLSER.value] = fields[0]
         ShellHandler().recall(self._base + '.' + fields[-1], self._name,
                               Context().ip_address)
 
@@ -88,6 +87,19 @@ class GDG(ListcatJob):
 
         return fields
 
+    def _update_record(self, record, fields):
+        """Updates dataset migration record with parameters extracted from the FTP command.
+
+        Arguments:
+            record {list} -- Dataset migration record.
+            fields {list} -- Dataset parameters extracted from the FTP command.
+        """
+        record[MCol.RECFM.value] = fields[-5]
+        record[MCol.LRECL.value] = fields[-4]
+        record[MCol.BLKSIZE.value] = fields[-3]
+        record[MCol.DSORG.value] = fields[-2]
+        record[MCol.VOLSER.value] = fields[0]
+
     def get_dataset_records(self):
         """Performs all the steps to exploit Mainframe info for GDG datasets only, and updates the migration records accordingly.
 
@@ -95,7 +107,7 @@ class GDG(ListcatJob):
             integer -- Return code of the method.
         """
         Log().logger.debug(LogM.GEN_FOR_BASE.value % self._base)
-        ftp_command = 'cd ' + self._record[Col.DSN.value] + '\nls'
+        ftp_command = 'cd ' + self._record[MCol.DSN.value] + '\nls'
         Log().logger.debug('[gdg] ' + ftp_command)
         stdout, _, rc = ShellHandler().execute_ftp_command(
             ftp_command,
@@ -115,14 +127,14 @@ class GDG(ListcatJob):
                                              fields[-1])):
 
                                 generation_record = [
-                                    '' for _ in range(len(Col))
+                                    '' for _ in range(len(MCol))
                                 ]
                                 generation_record[
-                                    Col.DSN.
+                                    MCol.DSN.
                                     value] = self._base + '.' + fields[-1]
                                 Log().logger.info(
                                     LogM.GEN_PROCESS.value %
-                                    generation_record[Col.DSN.value])
+                                    generation_record[MCol.DSN.value])
 
                                 if fields[0] == 'Migrated':
                                     fields = self._get_migrated(
@@ -143,7 +155,7 @@ class GDG(ListcatJob):
                                         Log().logger.info(LogM.TAPE.value %
                                                           self._name)
                                         generation_record[
-                                            Col.VOLSER.value] = fields[1]
+                                            MCol.VOLSER.value] = fields[1]
                                     elif len(fields) > 7:
                                         self._update_record(
                                             generation_record, fields)
@@ -165,9 +177,9 @@ class GDG(ListcatJob):
                                 if status == 'SUCCESS':
                                     Log().logger.debug(
                                         LogM.NEW_RECORD.value %
-                                        generation_record[Col.DSN.value])
+                                        generation_record[MCol.DSN.value])
 
-                                    new_record = DatasetRecord(Col)
+                                    new_record = DatasetRecord(MCol)
                                     new_record.columns = generation_record
 
                                     self._generations_count += 1
@@ -245,9 +257,9 @@ class GDG(ListcatJob):
         for i in range(self._index + 1,
                        self._index + 1 + self._generations_count, 1):
             generation_record = Context().records[i].columns
-            generation_record[Col.COPYBOOK.value] = self._record[
-                Col.COPYBOOK.value]
-            generation_record[Col.LISTCAT.value] = self._record[
-                Col.LISTCAT.value]
-            generation_record[Col.LISTCATDATE.value] = self._record[
-                Col.LISTCATDATE.value]
+            generation_record[MCol.COPYBOOK.value] = self._record[
+                MCol.COPYBOOK.value]
+            generation_record[MCol.LISTCAT.value] = self._record[
+                MCol.LISTCAT.value]
+            generation_record[MCol.LISTCATDATE.value] = self._record[
+                MCol.LISTCATDATE.value]

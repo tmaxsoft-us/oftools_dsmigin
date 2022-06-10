@@ -17,7 +17,7 @@ import sys
 from .Context import Context
 from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import Col, Width
+from .enums.MigrationEnum import MCol, Width
 from .handlers.FileHandler import FileHandler
 from .Log import Log
 
@@ -46,16 +46,14 @@ class CSV(object):
     def __init__(self, csv_path):
         """Initializes the class with all the attributes.
         """
-        self._headers_definition = [column.name for column in Col]
+        self._headers_definition = [column.name for column in MCol]
         self._column_widths = [width.value for width in Width]
-
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
 
         self._file_name = self._file_path.rsplit('/', 1)[1]
         self._root_file_name = self._file_name.split('.')[0]
-
 
         self._headers = []
         self._headers_formatted = []
@@ -98,7 +96,7 @@ class CSV(object):
                         self._check_headers(data[i])
 
                     else:
-                        record = DatasetRecord(Col)
+                        record = DatasetRecord(MCol)
                         record.columns = data[i]
                         Context().records.append(record)
 
@@ -229,7 +227,8 @@ class CSV(object):
         record_formatted = []
 
         if log == 1:
-            Log().logger.debug(LogM.FORMAT_RECORD.value % record[Col.DSN.value])
+            Log().logger.debug(LogM.FORMAT_RECORD.value %
+                               record[MCol.DSN.value])
 
         for index, value in enumerate(record):
             if len(value) < self._column_widths[index]:

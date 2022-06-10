@@ -19,7 +19,7 @@ import sys
 
 # Owned modules
 from ..enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import MCol
+from ..enums.MigrationEnum import MCol
 from ..Log import Log
 
 

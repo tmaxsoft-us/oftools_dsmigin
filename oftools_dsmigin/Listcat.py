@@ -15,7 +15,7 @@ import collections
 # Owned modules
 from .Context import Context
 from .enums.MessageEnum import Color, LogM
-from .enums.MigrationEnum import Col
+from .enums.MigrationEnum import MCol
 from .enums.ListcatEnum import LCol
 from .handlers.FileHandler import FileHandler
 from .Log import Log
@@ -219,13 +219,13 @@ class Listcat(object):
             dsn_list = []
             records = Context().records
             for dataset_record in records:
-                dsn_list.append(dataset_record.columns[Col.DSN.value])
+                dsn_list.append(dataset_record.columns[MCol.DSN.value])
             # dsn_list = [records.columns[Col.DSN.value] for _ in records]
 
-            index_dsn = record[Col.DSN.value] + '.INDEX'
+            index_dsn = record[MCol.DSN.value] + '.INDEX'
             if index_dsn in dsn_list:
                 # Replace the value in the column named DSORG by VSAM in the records list
-                record[Col.DSORG.value] = 'VSAM'
+                record[MCol.DSORG.value] = 'VSAM'
                 # Identify the position of the index DSN in the dsn_list
                 i = dsn_list.index(index_dsn)
                 # Remove the line where this DSN appears in the records list
@@ -233,9 +233,9 @@ class Listcat(object):
                 Log().logger.info(LogM.REMOVE_DATASET.value %
                                   (self._name, index_dsn))
 
-            data_dsn = record[Col.DSN.value] + '.DATA'
+            data_dsn = record[MCol.DSN.value] + '.DATA'
             if data_dsn in dsn_list:
-                record[Col.DSORG.value] = 'VSAM'
+                record[MCol.DSORG.value] = 'VSAM'
                 # Identify the position of the data DSN in the dsn_list
                 j = dsn_list.index(data_dsn)
                 # Remove the line where this DSN appears in the records list
