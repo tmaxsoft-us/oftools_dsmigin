@@ -19,14 +19,18 @@ class TestIPAddress(object):
 
     Fixtures:
         init_pwd
+        shared
 
     Tests:
+        test_ipv4
+        test_ipv6
+        test_ip_error
     """
 
     @staticmethod
     @pytest.fixture
     def init_pwd():
-        """
+        """Specify the absolute path to the current test directory.
         """
         pwd = os.getcwd() + '/tests/unit/context/'
         return pwd

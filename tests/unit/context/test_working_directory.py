@@ -19,6 +19,7 @@ class TestWorkingDirectory(object):
 
     Fixtures:
         init_pwd
+        shared
 
     Tests:
         test_initialization
@@ -28,7 +29,7 @@ class TestWorkingDirectory(object):
     @staticmethod
     @pytest.fixture
     def init_pwd():
-        """
+        """Specify the absolute path to the current test directory.
         """
         pwd = os.getcwd() + '/tests/unit/context/'
         return pwd
