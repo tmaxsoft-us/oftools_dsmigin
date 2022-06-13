@@ -14,16 +14,19 @@ import pytest
 from ....oftools_dsmigin.Main import Main
 
 
-class TestArgumentsErrors(object):
-    """Test cases for arguments errors.
+class TestOptions(object):
+    """Test cases for some of the command line options.
 
     Fixtures:
         shared
 
     Tests:
-        test_csv_type_error
-        test_listcat_missing_ip_address_error
-        test_ftp_missing_ip_address_error
+        test_dsn
+        test_encoding_code
+        test_help
+        test_no_option
+        test_tag
+        test_version
     """
 
     @staticmethod
@@ -35,46 +38,75 @@ class TestArgumentsErrors(object):
         return pwd
 
     @staticmethod
-    @pytest.mark.xfail
     @pytest.mark.skip(reason='Test not currently supported')
-    def test_csv_type_error(shared):
-        """Test with the option '-c, --csv' specified, not being a file with a .csv extension.
-        """
-        sys.argv = [sys.argv[0]]
-        sys.argv.append('--clear')
-        sys.argv.extend(['--log-level', 'DEBUG'])
-        sys.argv.extend(['--csv', shared + 'working_directory/default.txt'])
-        sys.argv.extend(['--working-directory', shared + 'working_directory'])
-
-        with pytest.raises(TypeError):
-            Main().run()
-
-    @staticmethod
-    @pytest.mark.skip(reason='Test not currently supported')
-    def test_listcat_missing_ip_address_error(shared):
-        """Test with the option '-L, --listcat' specified, but no '-i , --ip-address' option.
+    def test_dsn(shared):
+        """Test with the -d, --dsn option.
         """
         sys.argv = [sys.argv[0]]
         sys.argv.append('--clear')
         sys.argv.extend(['--log-level', 'DEBUG'])
         sys.argv.extend(['--csv', shared + 'working_directory/default.csv'])
         sys.argv.extend(['--working-directory', shared + 'working_directory'])
-        sys.argv.extend(['--listcat'])
+        sys.argv.extend(['--dsn', ''])
 
         assert Main().run() == 0
 
     @staticmethod
-    @pytest.mark.xfail
     @pytest.mark.skip(reason='Test not currently supported')
-    def test_ftp_missing_ip_address_error(shared):
-        """Test with the option '-F, --ftp' specified, but no '-i, --ip-address' option.
+    def test_encoding_code(shared):
+        """Test with the -e, --encoding-code option.
         """
         sys.argv = [sys.argv[0]]
         sys.argv.append('--clear')
         sys.argv.extend(['--log-level', 'DEBUG'])
         sys.argv.extend(['--csv', shared + 'working_directory/default.csv'])
         sys.argv.extend(['--working-directory', shared + 'working_directory'])
-        sys.argv.extend(['--ftp'])
+        sys.argv.extend(['--encoding-code', 'US'])
 
-        with pytest.raises(SystemError):
+        assert Main().run() == 0
+
+    @staticmethod
+    @pytest.mark.skip(reason='Test not currently supported')
+    def test_help():
+        """Test with the --help option.
+        """
+        sys.argv = [sys.argv[0]]
+        sys.argv.append('--help')
+
+        with pytest.raises(SystemExit):
+            Main().run()
+
+    @staticmethod
+    @pytest.mark.skip(reason='Test not currently supported')
+    def test_no_option():
+        """Test with no option to see help message output.
+        """
+        sys.argv = [sys.argv[0]]
+
+        with pytest.raises(SystemExit):
+            Main().run()
+
+    @staticmethod
+    @pytest.mark.skip(reason='Test not currently supported')
+    def test_tag(shared):
+        """Test with the --tag option.
+        """
+        sys.argv = [sys.argv[0]]
+        sys.argv.append('--clear')
+        sys.argv.extend(['--log-level', 'DEBUG'])
+        sys.argv.extend(['--csv', shared + 'working_directory/default.csv'])
+        sys.argv.extend(['--working-directory', shared + 'working_directory'])
+        sys.argv.extend(['--tag', 'test'])
+
+        assert Main().run() == 0
+
+    @staticmethod
+    @pytest.mark.skip(reason='Test not currently supported')
+    def test_version():
+        """Test with the --version option.
+        """
+        sys.argv = [sys.argv[0]]
+        sys.argv.append('--version')
+
+        with pytest.raises(SystemExit):
             Main().run()

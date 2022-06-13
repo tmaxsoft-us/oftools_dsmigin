@@ -466,14 +466,12 @@ class Main(object):
 
         except KeyboardInterrupt:
             storage_resource.write()
-            storage_resource.format()
 
             Context().clear_all()
             Log().close_file()
             Log().close_stream()
 
         # Need to clear context completely and close log at the end of the execution
-        storage_resource.format()
         Context().clear_all()
         Log().close_file()
         Log().close_stream()
