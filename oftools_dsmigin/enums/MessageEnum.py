@@ -201,3 +201,4 @@ class LogM(enum.Enum):
     RETURN_CODE = 'Return code: %s'
     VOLSER_COLUMN = '[migration] Using column value for VOLSER option: %s'
     VOLSER_DEFAULT = '[migration] Using default value for VOLSER option: DEFVOL'
+    VOLSER_SET_DEFAULT = '[migration] VOLSER set to: %s: Using default value instead: DEFVOL'

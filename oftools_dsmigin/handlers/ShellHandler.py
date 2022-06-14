@@ -290,7 +290,7 @@ class ShellHandler(metaclass=SingletonMeta):
         if 'F' in record[MCol.RECFM.value] and record[
                 MCol.LRECL.value] == '80' and record[
                     MCol.COPYBOOK.value] == 'L_80.convcpy':
-            options += ' -f L '
+            options += ' -f L'
         else:
             options += ' -f ' + record[MCol.RECFM.value]
 
@@ -349,7 +349,7 @@ class ShellHandler(metaclass=SingletonMeta):
         if 'F' in record[MCol.RECFM.value] and record[
                 MCol.LRECL.value] == '80' and record[
                     MCol.COPYBOOK.value] == 'L_80.convcpy':
-            options += ' -f L '
+            options += ' -f L'
         elif record[MCol.RECFM.value] == 'VBM':
             options += ' -f VB'
         else:
@@ -404,9 +404,14 @@ class ShellHandler(metaclass=SingletonMeta):
             options += ' -c SYS1.MASTER.ICFCAT'
 
         if 'VOLSER' in context.enable_column_list:
-            Log().logger.info(LogM.VOLSER_COLUMN.value %
-                              record[MCol.VOLSER.value])
-            options += ' -v ' + record[MCol.VOLSER.value]
+            if record[MCol.VOLSER.value] in ('Migrated', 'Pseudo', 'Tape'):
+                Log().logger.info(LogM.VOLSER_SET_DEFAULT.value %
+                                  record[MCol.VOLSER.value])
+                options += ' -v DEFVOL'
+            else:
+                Log().logger.info(LogM.VOLSER_COLUMN.value %
+                                  record[MCol.VOLSER.value])
+                options += ' -v ' + record[MCol.VOLSER.value]
         else:
             Log().logger.info(LogM.VOLSER_DEFAULT.value)
             options += ' -v DEFVOL'

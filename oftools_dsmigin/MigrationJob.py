@@ -88,10 +88,6 @@ class MigrationJob(Job):
             # Dataset organization considerations - missing information for successful migration
             if rc == 0:
                 if record[MCol.DSORG.value] in ('PO', 'PS'):
-                    if record[MCol.COPYBOOK.value] in unset_list:
-                        Log().logger.warning(skip_message +
-                                             LogM.COL_EMPTY.value % 'COPYBOOK')
-                        rc = 1
                     if record[MCol.RECFM.value] in unset_list:
                         Log().logger.warning(skip_message +
                                              LogM.COL_EMPTY.value % 'RECFM')
@@ -193,33 +189,43 @@ class MigrationJob(Job):
             dsn {string} --
             
         Returns:
-            boolean --
+            integer -- Return code of the method.
         """
-        is_in_openframe = False
-        openframe_listcat = 'listcat ' + dsn
+        rc = 0
 
-        Log().logger.debug(LogM.COMMAND.value % (self._name, openframe_listcat))
-        stdout, _, rc = ShellHandler().execute_command(openframe_listcat)
+        if Context().force == '':
 
-        if rc == 0:
-            lines = stdout.splitlines()
-            if len(lines) > 1:
-                fields = lines[-2].split()
-                #TODO Throw error if the conversion to int is not working
-                try:
-                    if int(fields[2]) > 0:
-                        is_in_openframe = True
-                except ValueError:
-                    Log().logger.debug(LogM.OF_LISTCAT_NOT_WORKING.value %
+            is_in_openframe = False
+            openframe_listcat = 'listcat ' + dsn
+
+            Log().logger.debug(LogM.COMMAND.value %
+                               (self._name, openframe_listcat))
+            stdout, _, rc = ShellHandler().execute_command(openframe_listcat)
+
+            if rc == 0:
+                lines = stdout.splitlines()
+                if len(lines) > 1:
+                    fields = lines[-2].split()
+                    #TODO Throw error if the conversion to int is not working
+                    try:
+                        if int(fields[2]) > 0:
+                            is_in_openframe = True
+                    except ValueError:
+                        Log().logger.debug(LogM.OF_LISTCAT_NOT_WORKING.value %
+                                           self._name)
+                else:
+                    Log().logger.debug(LogM.OF_LISTCAT_NOT_ENOUGH.value %
                                        self._name)
+                    Log().logger.debug(lines)
             else:
-                Log().logger.debug(LogM.OF_LISTCAT_NOT_ENOUGH.value %
-                                   self._name)
-                Log().logger.debug(lines)
-        else:
-            Log().logger.info(LogM.OF_LISTCAT_NOT_WORKING.value % self._name)
+                Log().logger.info(LogM.OF_LISTCAT_NOT_WORKING.value %
+                                  self._name)
 
-        return is_in_openframe
+            if is_in_openframe is True:
+                Log().logger.info(LogM.SKIP_MIGRATION.value % self._name)
+                rc = 1
+
+        return rc
 
     def _migrate_PO(self, record):
         """Executes the migration using dsmigin for a PO dataset.
@@ -230,27 +236,26 @@ class MigrationJob(Job):
         Returns:
             integer -- Return code of the method.
         """
-        if Context().conversion == '' and Context().force == '':
-            is_in_openframe = self._is_in_openframe(record[MCol.DSN.value])
-            if is_in_openframe is True:
-                Log().logger.info(LogM.SKIP_MIGRATION.value % self._name)
-                rc = 1
+        rc = 0
+
+        if Context().conversion == '':
+            rc = self._is_in_openframe(record[MCol.DSN.value])
+            if rc != 0:
                 return rc
 
-        po_directory = Context().datasets_directory + '/' + record[
-            MCol.DSN.value]
-
-        if Context().conversion == ' -C ':
+        else:
             # Creating directory for dataset conversion
-            dataset_conv_dir = Context().conversion_directory + '/' + record[
+            po_conversion_dir = Context().conversion_directory + '/' + record[
                 MCol.DSN.value]
-            FileHandler().create_directory(dataset_conv_dir)
+            FileHandler().create_directory(po_conversion_dir)
 
-        for member in FileHandler.get_files(po_directory):
-            src = po_directory + '/' + member
+        po_dir = Context().datasets_directory + '/' + record[MCol.DSN.value]
+
+        for member in FileHandler.get_files(po_dir):
+            src = po_dir + '/' + member
 
             if Context().conversion == ' -C ':
-                dst = dataset_conv_dir + '/' + member
+                dst = po_conversion_dir + '/' + member
             else:
                 dst = record[MCol.DSN.value]
 
@@ -281,13 +286,9 @@ class MigrationJob(Job):
         rc = 0
 
         if Context().conversion == '':
-
-            if Context().force == '':
-                is_in_openframe = self._is_in_openframe(record[MCol.DSN.value])
-                if is_in_openframe is True:
-                    Log().logger.info(LogM.SKIP_MIGRATION.value % self._name)
-                    rc = 1
-                    return rc
+            rc = self._is_in_openframe(record)
+            if rc != 0:
+                return rc
 
             _, _, rc = ShellHandler().dsdelete(record)
             if rc != 0:
@@ -307,13 +308,9 @@ class MigrationJob(Job):
             integer -- Return code of the method.
         """
         if Context().conversion == '':
-
-            if Context().force == '':
-                is_in_openframe = self._is_in_openframe(record[MCol.DSN.value])
-                if is_in_openframe is True:
-                    Log().logger.info(LogM.SKIP_MIGRATION.value % self._name)
-                    rc = 1
-                    return rc
+            rc = self._is_in_openframe(record)
+            if rc != 0:
+                return rc
 
             _, _, rc = ShellHandler().idcams_delete(record)
             if rc != 0:

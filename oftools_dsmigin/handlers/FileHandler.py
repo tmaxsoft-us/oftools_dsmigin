@@ -279,7 +279,7 @@ class FileHandler(object, metaclass=SingletonMeta):
             rc = 0
         except shutil.SameFileError:
             Log().logger.debug(ErrorM.SHUTIL_SAME_FILE.value % (src, dst))
-            rc = 1
+            rc = 0
         except OSError as error:
             Log().logger.critical(ErrorM.OS_COPY.value % error)
             rc = -1
