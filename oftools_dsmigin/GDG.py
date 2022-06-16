@@ -15,6 +15,7 @@ from .Context import Context
 from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import Color, ErrorM, LogM
 from .enums.MigrationEnum import MCol
+from .handlers.ListcatHandler import ListcatHandler
 from .handlers.ShellHandler import ShellHandler
 from .Log import Log
 
@@ -33,7 +34,6 @@ class GDG(object):
         
     Methods:
         __init__(record) -- Initializes all attributes of the class.
-        _get_migrated(record, fields, line_number) -- Executes the FTP command on Mainframe to retrieve dataset info in the case where VOLSER is set to Migrated.
         _update_record(fields, record) -- Updates migration dataset record with parameters extracted from the FTP command output.
         get_dataset_records() -- Performs all the steps to exploit Mainframe info for GDG datasets only, and updates the migration records accordingly.
     """
@@ -51,66 +51,19 @@ class GDG(object):
         self._generations = []
         self._generations_count = 0
 
-    def _get_migrated(self, record, fields, line_number):
-        """Executes the FTP command on Mainframe to retrieve dataset info in the case where VOLSER is set to Migrated.
-
-        Arguments:
-            record {list} -- Migration record containing dataset info.
-            fields {list} -- List of parameters extracted from the FTP command.
-            line_number {integer} -- The generation number, with a certain shift to match the appropriate line in the FTP command output.
-
-        Returns:
-            list -- The new list of parameters extracted from the FTP command after the recall.
-        """
-        Log().logger.info(LogM.MIGRATED.value % self._name)
-        record[MCol.VOLSER.value] = fields[0]
-        ShellHandler().recall(self._base + '.' + fields[-1], self._name,
-                              Context().ip_address)
-
-        Log().logger.debug(LogM.FTP_LS_AGAIN.value % self._name)
-        ftp_command = 'cd ' + self._base + '\nls'
-
-        Log().logger.debug(LogM.COMMAND.value % (self._name, ftp_command))
-        stdout, _, rc = ShellHandler().execute_ftp_command(
-            ftp_command,
-            Context().ip_address)
-
-        if rc == 0:
-            self._generations = stdout.splitlines()
-            if len(self._generations) > 1:
-                fields = self._generations[line_number].split()
-            else:
-                Log().logger.debug(LogM.FTP_EMPTY.value % self._name)
-                fields = []
-        else:
-            fields = []
-
-        return fields
-
-    def _update_record(self, record, fields):
-        """Updates dataset migration record with parameters extracted from the FTP command.
-
-        Arguments:
-            record {list} -- Dataset migration record.
-            fields {list} -- Dataset parameters extracted from the FTP command.
-        """
-        record[MCol.RECFM.value] = fields[-5]
-        record[MCol.LRECL.value] = fields[-4]
-        record[MCol.BLKSIZE.value] = fields[-3]
-        record[MCol.DSORG.value] = fields[-2]
-        record[MCol.VOLSER.value] = fields[0]
-
-    def get_dataset_records(self):
+    def get_from_mainframe(self):
         """Performs all the steps to exploit Mainframe info for GDG datasets only, and updates the migration records accordingly.
 
         Returns:
             integer -- Return code of the method.
         """
         Log().logger.debug(LogM.GEN_FOR_BASE.value % self._base)
-        ftp_command = 'cd ' + self._record[MCol.DSN.value] + '\nls'
-        Log().logger.debug('[gdg] ' + ftp_command)
+        ftp_cd_ls = 'cd ' + self._record[MCol.DSN.value] + '\nls'
+
+        Log().logger.debug('[gdg] ' + ftp_cd_ls)
+        Log().logger.debug(LogM.COMMAND.value % (self._name, ftp_cd_ls))
         stdout, _, rc = ShellHandler().execute_ftp_command(
-            ftp_command,
+            ftp_cd_ls,
             Context().ip_address)
 
         failed = False
@@ -126,19 +79,19 @@ class GDG(object):
                             if bool(re.match(r"G[0-9]{4}V[0-9]{2}",
                                              fields[-1])):
 
-                                generation_record = [
-                                    '' for _ in range(len(MCol))
-                                ]
-                                generation_record[
+                                generation = ['' for _ in range(len(MCol))]
+                                generation[
                                     MCol.DSN.
                                     value] = self._base + '.' + fields[-1]
-                                Log().logger.info(
-                                    LogM.GEN_PROCESS.value %
-                                    generation_record[MCol.DSN.value])
+                                generation[MCol.COPYBOOK.value] = self._record[
+                                    MCol.COPYBOOK.value]
+                                Log().logger.info(LogM.GEN_PROCESS.value %
+                                                  generation[MCol.DSN.value])
 
                                 if fields[0] == 'Migrated':
-                                    fields = self._get_migrated(
-                                        self._record, fields, i)
+                                    fields = ListcatHandler().get_migrated(
+                                        generation, self._name,
+                                        Context().ip_address, i)
 
                                 # New evaluation of len(fields) required after migrated update
                                 if len(fields) == 0:
@@ -152,13 +105,11 @@ class GDG(object):
                                     color = Color.GREEN.value
 
                                     if fields[1] == 'Tape':
-                                        Log().logger.info(LogM.TAPE.value %
-                                                          self._name)
-                                        generation_record[
-                                            MCol.VOLSER.value] = fields[1]
+                                        ListcatHandler().process_tape(
+                                            generation, fields, self._name)
                                     elif len(fields) > 7:
-                                        self._update_record(
-                                            generation_record, fields)
+                                        ListcatHandler().update_record(
+                                            generation, fields)
                                     else:
                                         Log().logger.info(
                                             LogM.NOT_SUPPORTED.value %
@@ -177,15 +128,15 @@ class GDG(object):
                                 if status == 'SUCCESS':
                                     Log().logger.debug(
                                         LogM.NEW_RECORD.value %
-                                        generation_record[MCol.DSN.value])
+                                        generation[MCol.DSN.value])
 
-                                    new_record = DatasetRecord(MCol)
-                                    new_record.columns = generation_record
+                                    record = DatasetRecord(MCol)
+                                    record.columns = generation
 
                                     self._generations_count += 1
                                     Context().records.insert(
                                         self._index + self._generations_count,
-                                        new_record)
+                                        record)
 
                                 Log().logger.info(color +
                                                   LogM.LISTCAT_GDG_GEN.value %
@@ -254,11 +205,11 @@ class GDG(object):
     def update_listcat_result(self):
         """
         """
-        for i in range(self._index + 1,
-                       self._index + 1 + self._generations_count, 1):
+        start = self._index + 1
+        end = start + self._generations_count
+
+        for i in range(start, end, 1):
             generation_record = Context().records[i].columns
-            generation_record[MCol.COPYBOOK.value] = self._record[
-                MCol.COPYBOOK.value]
             generation_record[MCol.LISTCAT.value] = self._record[
                 MCol.LISTCAT.value]
             generation_record[MCol.LISTCATDATE.value] = self._record[
