@@ -21,7 +21,7 @@ from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import ErrorM, LogM
 from .enums.MigrationEnum import MCol
 from .handlers.FileHandler import FileHandler
-from .JobFactory import JobFactory
+from .jobs.JobFactory import JobFactory
 from .Listcat import Listcat
 from .Log import Log
 # from .Statistics import Statistics

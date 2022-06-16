@@ -13,15 +13,15 @@ import time
 # Third-party modules
 
 # Owned modules
-from .Context import Context
-from .enums.ListcatEnum import LCol
-from .enums.MessageEnum import Color, ErrorM, LogM
-from .enums.MigrationEnum import MCol
-from .GDG import GDG
-from .handlers.ListcatHandler import ListcatHandler
-from .handlers.ShellHandler import ShellHandler
+from ..Context import Context
+from ..enums.ListcatEnum import LCol
+from ..enums.MessageEnum import Color, ErrorM, LogM
+from ..enums.MigrationEnum import MCol
+from ..GDG import GDG
+from ..handlers.ListcatHandler import ListcatHandler
+from ..handlers.ShellHandler import ShellHandler
 from .Job import Job
-from .Log import Log
+from ..Log import Log
 
 
 class ListcatJob(Job):

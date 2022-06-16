@@ -14,13 +14,13 @@ import time
 # Third-party modules
 
 # Owned modules
-from .Context import Context
+from ..Context import Context
 from .Job import Job
-from .Log import Log
-from .enums.MessageEnum import Color, LogM
-from .enums.MigrationEnum import MCol
-from .handlers.FileHandler import FileHandler
-from .handlers.ShellHandler import ShellHandler
+from ..Log import Log
+from ..enums.MessageEnum import Color, LogM
+from ..enums.MigrationEnum import MCol
+from ..handlers.FileHandler import FileHandler
+from ..handlers.ShellHandler import ShellHandler
 
 
 class MigrationJob(Job):
