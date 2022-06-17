@@ -13,12 +13,11 @@ import collections
 # Third-party modules
 
 # Owned modules
-from .Context import Context
-from .enums.MessageEnum import Color, LogM
-from .enums.MigrationEnum import MCol
-from .enums.ListcatEnum import LCol
-from .handlers.FileHandler import FileHandler
-from .Log import Log
+from ..Context import Context
+from ..enums.MessageEnum import Color, LogM
+from ..enums.ListcatEnum import LCol
+from ..handlers.FileHandler import FileHandler
+from ..Log import Log
 
 
 class Listcat(object):

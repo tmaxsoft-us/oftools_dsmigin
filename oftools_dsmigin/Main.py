@@ -16,11 +16,11 @@ import traceback
 # Owned modules
 from . import __version__
 from .Context import Context
-from .CSV import CSV
 from .enums.MessageEnum import ErrorM, LogM
+from .files.CSV import CSV
+from .files.Listcat import Listcat
 from .handlers.FileHandler import FileHandler
 from .jobs.JobFactory import JobFactory
-from .Listcat import Listcat
 from .Log import Log
 # from .Statistics import Statistics
 

@@ -14,12 +14,12 @@ import time
 
 # Owned modules
 from ..Context import Context
-from .Job import Job
-from ..Log import Log
 from ..enums.MessageEnum import Color, LogM
 from ..enums.MigrationEnum import MCol
 from ..handlers.FileHandler import FileHandler
 from ..handlers.ShellHandler import ShellHandler
+from .Job import Job
+from ..Log import Log
 
 
 class MigrationJob(Job):

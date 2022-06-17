@@ -14,12 +14,12 @@ import sys
 # Third-party modules
 
 # Owned modules
-from .Context import Context
-from .DatasetRecord import DatasetRecord
-from .enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import MCol, Width
-from .handlers.FileHandler import FileHandler
-from .Log import Log
+from ..Context import Context
+from ..DatasetRecord import DatasetRecord
+from ..enums.MessageEnum import ErrorM, LogM
+from ..enums.MigrationEnum import MCol, Width
+from ..handlers.FileHandler import FileHandler
+from ..Log import Log
 
 
 class CSV(object):
