@@ -9,6 +9,7 @@ Typical usage example:
 
 # Generic/Built-in modules
 import time
+import sys
 
 # Third-party modules
 
@@ -74,7 +75,8 @@ class MigrationJob(Job):
                 Log().logger.info(skip_message + LogM.COL_Y.value % 'IGNORE')
                 rc = 1
             elif record[MCol.FTPDATE.value] == '':
-                Log().logger.info('[migration] FTPDATE not set')
+                Log().logger.info('[migration] ' +
+                                  LogM.COL_NOT_SET.value % 'FTPDATE')
                 rc = 0
             elif record[MCol.DSMIGIN.value] == 'N':
                 Log().logger.debug(skip_message + LogM.COL_N.value % 'DSMIGIN')
@@ -126,7 +128,7 @@ class MigrationJob(Job):
                         rc = 1
 
                 elif record[MCol.DSORG.value] == 'GDG':
-                    Log().logger.warning(skip_message +
+                    Log().logger.info(skip_message +
                                          LogM.DSORG_GDG.value % self._name)
                     record[MCol.DSMIGINDATE.value] = Context().time_stamp
                     record[MCol.DSMIGINDURATION.value] = '0'
@@ -171,7 +173,7 @@ class MigrationJob(Job):
 
         cobgensch = 'cobgensch ' + copybook_path
 
-        Log().logger.debug(LogM.COMMAND.value % (self._name, cobgensch))
+        Log().logger.info(LogM.COMMAND.value % (self._name, cobgensch))
         _, _, rc = ShellHandler().execute_command(cobgensch, 'migration')
 
         # Copy the copybook to TSAM copybook directory
@@ -205,20 +207,21 @@ class MigrationJob(Job):
                 lines = stdout.splitlines()
                 if len(lines) > 1:
                     fields = lines[-2].split()
-                    #TODO Throw error if the conversion to int is not working
                     try:
                         if int(fields[2]) > 0:
                             is_in_openframe = True
                     except ValueError:
-                        Log().logger.debug(LogM.OF_LISTCAT_NOT_WORKING.value %
+                        Log().logger.critical(LogM.OF_LISTCAT_NOT_WORKING.value %
                                            self._name)
+                        sys.exit(-1)
                 else:
                     Log().logger.debug(LogM.OF_LISTCAT_NOT_ENOUGH.value %
                                        self._name)
                     Log().logger.debug(lines)
             else:
-                Log().logger.info(LogM.OF_LISTCAT_NOT_WORKING.value %
+                Log().logger.critical(LogM.OF_LISTCAT_NOT_WORKING.value %
                                   self._name)
+                sys.exit(-1)
 
             if is_in_openframe is True:
                 Log().logger.info(LogM.SKIP_MIGRATION.value % self._name)

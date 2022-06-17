@@ -107,7 +107,7 @@ class FTPJob(Job):
                                              LogM.PREFIX_MISSING.value)
                         rc = 1
                 elif record[MCol.DSORG.value] == 'GDG':
-                    Log().logger.warning(skip_message +
+                    Log().logger.info(skip_message +
                                          LogM.DSORG_GDG.value % self._name)
                     record[MCol.FTPDATE.value] = Context().time_stamp
                     record[MCol.FTPDURATION.value] = '0'
@@ -225,8 +225,8 @@ class FTPJob(Job):
                         record[MCol.RECFM.value] = 'FB'
                         record[MCol.LRECL.value] = fields[6]
                 else:
-                    Log().logger.warning(LogM.TAPE_VB.value % self._name)
-                    Log().logger.warning(LogM.TAPE_INCORRECT.value %
+                    Log().logger.error(LogM.TAPE_VB.value % self._name)
+                    Log().logger.error(LogM.TAPE_INCORRECT.value %
                                          (self._name, record[MCol.DSN.value]))
                     record[MCol.RECFM.value] = 'VB'
                     rc = -2

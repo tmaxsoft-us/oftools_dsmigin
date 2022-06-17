@@ -107,7 +107,7 @@ class CSV(object):
                 raise FileNotFoundError()
 
         except IndexError:
-            Log().logger.error(ErrorM.INDEX_ELEMENTS_LINE.value % i)
+            Log().logger.critical(ErrorM.INDEX_ELEMENTS_LINE.value % i)
             sys.exit(-1)
         except FileNotFoundError:
             Log().logger.critical(ErrorM.INIT.value %

@@ -296,7 +296,7 @@ class ShellHandler(metaclass=SingletonMeta):
 
         dscreate = 'dscreate ' + options + ' ' + record[MCol.DSN.value]
 
-        Log().logger.debug(LogM.COMMAND.value % ('migration', dscreate))
+        Log().logger.info(LogM.COMMAND.value % ('migration', dscreate))
         _, _, rc = ShellHandler().execute_command(dscreate, 'migration')
 
         return rc
@@ -306,7 +306,7 @@ class ShellHandler(metaclass=SingletonMeta):
         """
         dsdelete = 'dsdelete ' + record[MCol.DSN.value]
 
-        Log().logger.debug(LogM.COMMAND.value % ('migration', dsdelete))
+        Log().logger.info(LogM.COMMAND.value % ('migration', dsdelete))
         _, _, rc = ShellHandler().execute_command(dsdelete, 'migration')
 
         return rc
@@ -371,7 +371,7 @@ class ShellHandler(metaclass=SingletonMeta):
 
         dsmigin = 'dsmigin ' + src + ' ' + dst + options
 
-        Log().logger.debug(LogM.COMMAND.value % ('migration', dsmigin))
+        Log().logger.info(LogM.COMMAND.value % ('migration', dsmigin))
         _, _, rc = ShellHandler().execute_command(dsmigin, 'migration')
 
         return rc
@@ -418,7 +418,7 @@ class ShellHandler(metaclass=SingletonMeta):
 
         idcams_define = 'idcams define' + ' -n ' + src + options
 
-        Log().logger.debug(LogM.COMMAND.value % ('migration', idcams_define))
+        Log().logger.info(LogM.COMMAND.value % ('migration', idcams_define))
         _, _, rc = ShellHandler().execute_command(idcams_define, 'migration')
 
         # Retry with -O option if failed
@@ -426,7 +426,7 @@ class ShellHandler(metaclass=SingletonMeta):
             options += ' -O'
             idcams_define = 'idcams define' + ' -n ' + src + options
 
-            Log().logger.debug(LogM.COMMAND.value %
+            Log().logger.info(LogM.COMMAND.value %
                                ('migration', idcams_define))
             _, _, rc = ShellHandler().execute_command(idcams_define,
                                                       'migration')
@@ -447,7 +447,7 @@ class ShellHandler(metaclass=SingletonMeta):
         idcams_delete = 'idcams delete ' + ' -n ' + record[
             MCol.DSN.value] + options
 
-        Log().logger.debug(LogM.COMMAND.value % ('migration', idcams_delete))
+        Log().logger.info(LogM.COMMAND.value % ('migration', idcams_delete))
         _, _, rc = ShellHandler().execute_command(idcams_delete, 'migration')
 
         return rc

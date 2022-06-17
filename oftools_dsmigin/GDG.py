@@ -60,7 +60,6 @@ class GDG(object):
         Log().logger.debug(LogM.GEN_FOR_BASE.value % self._base)
         ftp_cd_ls = 'cd ' + self._record[MCol.DSN.value] + '\nls'
 
-        Log().logger.debug('[gdg] ' + ftp_cd_ls)
         Log().logger.debug(LogM.COMMAND.value % (self._name, ftp_cd_ls))
         stdout, _, rc = ShellHandler().execute_ftp_command(
             ftp_cd_ls,
@@ -95,7 +94,7 @@ class GDG(object):
 
                                 # New evaluation of len(fields) required after migrated update
                                 if len(fields) == 0:
-                                    Log().logger.info(LogM.FIELDS_EMPTY.value %
+                                    Log().logger.error(LogM.FIELDS_EMPTY.value %
                                                       self._name)
                                     status = 'FAILED'
                                     color = Color.RED.value
@@ -111,14 +110,14 @@ class GDG(object):
                                         ListcatHandler().update_record(
                                             generation, fields)
                                     else:
-                                        Log().logger.info(
+                                        Log().logger.error(
                                             LogM.NOT_SUPPORTED.value %
                                             self._name)
                                         status = 'FAILED'
                                         color = Color.RED.value
 
                                 else:
-                                    Log().logger.info(
+                                    Log().logger.error(
                                         LogM.FIELDS_INCOMPLETE.value %
                                         self._name)
                                     status = 'FAILED'
@@ -159,7 +158,7 @@ class GDG(object):
                                 break
                             elif fields[
                                     -1] == 'Dsname' and self._generations_count == 0 and failed is True:
-                                Log().logger.info(LogM.GEN_FAIL.value)
+                                Log().logger.error(LogM.GEN_FAIL.value)
                                 status = 'FAILED'
                                 color = Color.RED.value
                                 rc = -1
@@ -171,7 +170,7 @@ class GDG(object):
                                 Log().logger.debug(LogM.GEN_SKIP.value)
                                 continue
                         else:
-                            Log().logger.info(LogM.FIELDS_EMPTY.value %
+                            Log().logger.error(LogM.FIELDS_EMPTY.value %
                                               self._name)
                             continue
 

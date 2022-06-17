@@ -71,7 +71,7 @@ class ListcatHandler(metaclass=SingletonMeta):
             if len(lines) > 1:
                 fields = lines[n].split()
             else:
-                Log().logger.info(LogM.FTP_EMPTY.value % job_name)
+                Log().logger.error(LogM.FTP_EMPTY.value % job_name)
 
         return fields
 
