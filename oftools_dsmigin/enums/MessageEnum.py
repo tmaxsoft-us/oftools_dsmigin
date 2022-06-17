@@ -101,17 +101,13 @@ class LogM(enum.Enum):
     FIELDS_EMPTY = '[%s] Fields empty'
     FIELDS_INCOMPLETE = '[%s] Fields incomplete'
     FTP_EMPTY = '[%s] FTP result empty'
-    FTP_LS_AGAIN = '[%s] Running the FTP "ls" command once again'
-    MIGRATED = '[%s] Dataset marked as "Migrated"'
     NOT_SUPPORTED = '[%s] Scenario not supported'
     SKIP = '[%s] Skipping dataset: %s: '
     START_JOB = '[%s] Starting Job'
-    TAPE = '[%s] Dataset in "Tape" volume'
 
     # Context module
     INIT_WORKING_DIR = 'Initializing working directory'
     IP_ADDRESS_OK = 'Proper ip address specified: Proceeding'
-    VSAM_LISTCAT_SKIP = 'Skipping listcat file data retrieval for VSAM datasets'
     WORKING_DIR_OK = 'Proper dataset migration working directory specified: Proceeding'
 
     # CSV module
@@ -119,19 +115,14 @@ class LogM(enum.Enum):
     CSV_INIT = '(CSV) Initializing file from template: %s'
     CSV_READ = '(CSV) Reading data from file: %s'
     CSV_WRITE = '(CSV) Writing data to file: %s'
-    FORMAT_RECORD = '(CSV) Formatting record due to some changes: Adding trailing spaces to record: %s'
     HEADERS_DSN_ONLY = '(CSV) List of dataset names only'
     HEADERS_FILE = '(CSV) Headers from input file: %s'
     HEADERS_FIX = '(CSV) Running headers auto-correct'
     HEADERS_OK = '(CSV) Headers correctly specified'
     HEADERS_PROG = '(CSV) Headers in program definition: %s'
 
-    # FileHandler module
-    CP_SUCCESS = 'Successful copy of %s to %s'
-    DIR_CREATED = 'Directory successfully created: %s'
-    DIR_EMPTY = 'Directory empty: %s'
-    DIR_NOT_EXIST = 'Directory does not exist: Creating new directory: %s'
-    DIR_PROCESS_EMPTY = 'Directory successfully emptied: %s'
+    # DatasetRecord module
+    FORMAT_RECORD = '(CSV) Formatting record due to some changes: Adding trailing spaces to record: %s'
 
     # FTPJob module
     DOWNLOAD = '[%s] Downloading dataset: %s'
@@ -160,19 +151,26 @@ class LogM(enum.Enum):
     # Job module
 
     # Listcat module
-    END_LISTCAT_GEN = '[%s] Starting Listcat CSV file generation'
-    DATASET_IDENTIFIED = '[%s] Dataset identified: %s'
-    LISTCAT_CSV_FILE_STATUS = 'LISTCAT CSV FILE %s' + Color.WHITE.value
-    REMOVE_DATASET = '[%s] Removing dataset from list: This is not useful for the migration to OpenFrame: %s'
-    START_LISTCAT_GEN = '[%s] Ending Listcat CSV file generation'
+    END_LISTCAT_GEN = '(LISTCAT) Ending CSV file generation'
+    DATASET_IDENTIFIED = '(LISTCAT) Dataset identified: %s'
+    LISTCAT_GEN_STATUS = 'LISTCAT FILE GENERATION %s' + Color.WHITE.value
+    LISTCAT_READ = '(LISTCAT) Reading data from file: %s'
+    LISTCAT_SKIP = '(LISTCAT) Skipping CSV file data retrieval for VSAM datasets: No such file or directory: %s'
+    LISTCAT_WRITE = '(LISTCAT) Writing data to file: %s'
+    START_LISTCAT_GEN = '(LISTCAT) Starting CSV file generation'
+
+    # ListcatHandler module
+    FTP_LS_AGAIN = '[%s] Running the FTP "ls" command once again'
+    MIGRATED = '[%s] Dataset marked as "Migrated"'
+    TAPE = '[%s] Dataset in "Tape" volume'
 
     # ListcatJob module
     DATASET_FOUND = '[%s] Dataset found in the listcat file: Updating migration record'
     DATASET_NOT_FOUND = '[%s] Dataset not found in the listcat file: Skipping dataset'
-    GDG = '[%s] GDG dataset detected'
-    LISTCAT_FILE = 'LISTCAT FILE %s' + Color.WHITE.value
-    LISTCAT_MAINFRAME = 'LISTCAT MAINFRAME %s' + Color.WHITE.value
+    LISTCAT_FILE_STATUS = 'LISTCAT FILE %s' + Color.WHITE.value
+    LISTCAT_MAINFRAME_STATUS = 'LISTCAT MAINFRAME %s' + Color.WHITE.value
     LISTCAT_STATUS = 'LISTCAT %s (%fs)' + Color.WHITE.value
+    REMOVE_DATASET = '[%s] Removing dataset from CSV file: This is not useful for the migration to OpenFrame: %s'
 
     # Main module
     COUNT = 'Current dataset count: %d'
@@ -182,20 +180,26 @@ class LogM(enum.Enum):
     TERMINATE = 'Terminating program execution'
 
     # MigrationJob module
-    OF_LISTCAT_NOT_ENOUGH = '[%s] Not enough data in the listcat command output: '
-    OF_LISTCAT_NOT_WORKING = ' [%s] Listcat command not working CORRECTLY'
+    OF_LISTCAT_NOT_ENOUGH = '[%s] Not enough data in the listcat command output'
+    OF_LISTCAT_NOT_WORKING = ' [%s] Listcat command not working correctly'
     MIGRATION_STATUS = 'MIGRATION %s (%fs)' + Color.WHITE.value
     SKIP_MIGRATION = '[%s] Dataset already exist in OpenFrame: Skipping migration'
 
     # Handlers
 
     # FileHandler module
+    CP_SUCCESS = 'Successful copy of %s to %s'
+    DIR_CREATED = 'Directory successfully created: %s'
+    DIR_EMPTY = 'Directory empty: %s'
+    DIR_NOT_EXIST = 'Directory does not exist: Creating new directory: %s'
+    DIR_PROCESS_EMPTY = 'Directory successfully emptied: %s'
 
     # ShellHandler module
     CATALOG_COLUMN = '[migration] Using column value for CATALOG option: %s'
     CATALOG_DEFAULT = '[migration] Using default value for CATALOG option: SYS1.MASTER.ICFCAT'
     COPYBOOK_COLUMN = '[migration] Using column value for COPYBOOK option: %s'
     COPYBOOK_DEFAULT = '[migration] Using default value for COPYBOOK option: %s.conv'
+    GET_GENERATIONS = '[gdg] Retrieving dataset generations from Mainframe: %s'
     GET_MAINFRAME = '[listcat] Retrieving dataset info from Mainframe: %s'
     RECALL = '[listcat] Recalling migrated dataset: %s'
     RETURN_CODE = 'Return code: %s'

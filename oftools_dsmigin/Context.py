@@ -16,6 +16,7 @@ import sys
 
 # Owned modules
 from .enums.MessageEnum import ErrorM, LogM
+from .enums.MigrationEnum import MCol
 from .handlers.FileHandler import FileHandler
 from .handlers.ShellHandler import ShellHandler
 from .Log import Log
@@ -70,7 +71,7 @@ class Context(object, metaclass=SingletonMeta):
         """Initializes the class with all the attributes.
         """
         # Required variables for program execution
-        self._init = False
+        self._initialization = False
         self._number = 0
         self._records = []
 
@@ -90,7 +91,7 @@ class Context(object, metaclass=SingletonMeta):
         self._force = ''
         self._generations = 0
         self._ip_address = ''
-        self._listcat = None
+        self._listcat_records = {}
         self._prefix = ''
         self._test = False
 
@@ -104,20 +105,20 @@ class Context(object, metaclass=SingletonMeta):
         self._init_pwd = os.getcwd()
 
     @property
-    def init(self):
-        """Getter method for the attribute _init.
+    def initialization(self):
+        """Getter method for the attribute _initialization.
 
         Returns:
             boolean -- the value for _init.
         """
-        return self._init
+        return self._initialization
 
-    @init.setter
-    def init(self, init):
-        """Setter method for the attribute _init.
+    @initialization.setter
+    def init(self, initialization):
+        """Setter method for the attribute _initialization.
         """
-        if init is not None:
-            self._init = init
+        if initialization is not None:
+            self._initialization = initialization
 
     @property
     def number(self):
@@ -127,6 +128,21 @@ class Context(object, metaclass=SingletonMeta):
             integer -- the value for _number.
         """
         return self._number
+
+    @property
+    def records(self):
+        """Getter method for the attribute _records.
+
+        Returns:
+            list -- the value for _records.
+        """
+        return self._records
+
+    @property
+    def dsn_list(self):
+        """
+        """
+        return [record.columns[MCol.DSN.value] for record in self._records]
 
     @number.setter
     def number(self, number):
@@ -249,15 +265,6 @@ class Context(object, metaclass=SingletonMeta):
             sys.exit(-1)
 
     @property
-    def records(self):
-        """Getter method for the attribute _records.
-
-        Returns:
-            list -- the value for _records.
-        """
-        return self._records
-
-    @property
     def ip_address(self):
         """Getter method for the attribute _ip_address.
 
@@ -319,25 +326,19 @@ class Context(object, metaclass=SingletonMeta):
             sys.exit(-1)
 
     @property
-    def listcat(self):
+    def listcat_records(self):
         """Getter method for the attribute _listcat.
 
         Returns:
             Listcat object -- the value for _listcat
         """
-        return self._listcat
+        return self._listcat_records
 
-    @listcat.setter
-    def listcat(self, listcat):
+    @listcat_records.setter
+    def listcat_records(self, records):
         """Setter method for the attribute _listcat.
         """
-        if listcat is not None:
-            self._listcat = listcat
-
-            rc = self._listcat.read_csv()
-            if rc != 0:
-                Log().logger.warning(LogM.VSAM_LISTCAT_SKIP.value)
-                self._listcat = {}
+        self._listcat_records = records
 
     @property
     def generations(self):

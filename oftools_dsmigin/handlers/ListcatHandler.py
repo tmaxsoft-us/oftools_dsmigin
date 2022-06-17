@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """Set of methods useful in any module.
 
-This module gathers a set of methods that are useful in all Liscat related modules. When a method is widely 
+This module gathers a set of methods that are useful in all Listcat related modules. When a method is widely 
 used in different modules, a general version of it is created and can be found here.
 
 Typical usage example:
-    ListcatHandler().()
+  ListcatHandler().get_migrated(record, 'listcat', ip_address)
 """
 
 # Generic/Built-in modules
@@ -14,9 +14,10 @@ Typical usage example:
 # Third-party modules
 
 # Owned modules
-from ..enums.MessageEnum import ErrorM, LogM
+from ..enums.MessageEnum import LogM
 from ..enums.MigrationEnum import MCol
 from ..Log import Log
+from .ShellHandler import ShellHandler
 
 
 class SingletonMeta(type):
@@ -33,7 +34,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class ShellHandler(metaclass=SingletonMeta):
+class ListcatHandler(metaclass=SingletonMeta):
     """A class used to run .
 
     Methods:
@@ -70,7 +71,7 @@ class ShellHandler(metaclass=SingletonMeta):
             if len(lines) > 1:
                 fields = lines[n].split()
             else:
-                Log().logger.debug(LogM.FTP_EMPTY.value % job_name)
+                Log().logger.info(LogM.FTP_EMPTY.value % job_name)
 
         return fields
 

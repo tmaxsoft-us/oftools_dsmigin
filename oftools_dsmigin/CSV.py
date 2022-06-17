@@ -56,7 +56,7 @@ class CSV(object):
         self._root_file_name = self._file_name.split('.')[0]
 
         self._headers = []
-        self._headers_formatted = []
+        self._headers_formatted = DatasetRecord(MCol)
         self._records_formatted = []
 
         if Context().initialization:
@@ -101,7 +101,7 @@ class CSV(object):
                         Context().records.append(record)
 
                 self._records_formatted = [
-                    self._format(record) for record in Context().records
+                    record.format(self._column_widths) for record in Context().records
                 ]
             else:
                 raise FileNotFoundError()
@@ -186,9 +186,8 @@ class CSV(object):
         else:
             Log().logger.debug(LogM.HEADERS_OK.value)
 
-        self._headers_formatted = [
-            self._format(header) for header in self._headers
-        ]
+        self._headers_formatted.columns = self._headers
+        self._headers_formatted.format(self._column_widths)
 
     def write(self, index=None):
         """Writes the dataset migration records to the CSV file.
@@ -204,36 +203,18 @@ class CSV(object):
         Log().logger.debug(LogM.CSV_WRITE.value % self._file_path)
 
         if index != None:
-            record = Context().records[index].columns
-            self._records_formatted[index].columns = self._format(record, log=1)
+            record = Context().records[index]
+            self._records_formatted[index] = record.format(self._column_widths, log=1)
 
-        content = [self._headers_formatted] + self._records_formatted
+        content = self._headers_formatted.columns + self._records_formatted[:].columns
         rc = FileHandler().write_file(self._file_path, content)
 
         return rc
 
-    def _format(self, record, log=0):
-        """Formats CSV record adding trailing spaces to each columns.
-
-        To ease reading and analyzing the file the columns are properly aligned based on an enumeration listing the width for each column.
-
-        Arguments:
-            record {list} -- CSV record to be formatted.
-            log {integer} -- Flag to indicate if the log is being ued or not.
-
-        Returns:
-            list -- Formatted CSV record.
+    @staticmethod
+    def add_record(dsn):
         """
-        record_formatted = []
-
-        if log == 1:
-            Log().logger.debug(LogM.FORMAT_RECORD.value %
-                               record[MCol.DSN.value])
-
-        for index, value in enumerate(record):
-            if len(value) < self._column_widths[index]:
-                record_formatted.append(value.ljust(self._column_widths[index]))
-            else:
-                record_formatted.append(value)
-
-        return record_formatted
+        """
+        record = DatasetRecord(MCol)
+        record.columns = [dsn]
+        Context().records.append(record)

@@ -17,9 +17,7 @@ import traceback
 from . import __version__
 from .Context import Context
 from .CSV import CSV
-from .DatasetRecord import DatasetRecord
 from .enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import MCol
 from .handlers.FileHandler import FileHandler
 from .jobs.JobFactory import JobFactory
 from .Listcat import Listcat
@@ -336,7 +334,7 @@ class Main(object):
 
         try:
             if args.listcat:
-                listcat = Listcat(Context().listcat_directory + '/listcat.csv')
+                listcat = Listcat(args.listcat_gen)
                 Context().generations = args.generations
                 Context().ip_address = args.ip_address
                 Context().listcat = listcat
@@ -406,17 +404,10 @@ class Main(object):
             if args.dsn:
                 dataset_names = args.dsn.split(':')
                 for dsn in dataset_names:
-                    record = DatasetRecord(MCol)
-                    record.columns = [dsn]
-                    Context().records.append(record)
-
-            # Listcat CSV file generation
-            if args.listcat_gen:
-                listcat = Listcat(args.listcat_gen)
-                listcat.generate_csv()
+                    storage_resource.add_record(dsn)
 
             # Create jobs
-            jobs = self._create_jobs(args, storage_resource)
+            jobs = self._create_jobs(args)
 
             for index, value in enumerate(Context().records):
                 try:

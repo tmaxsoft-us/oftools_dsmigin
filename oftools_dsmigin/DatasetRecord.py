@@ -9,6 +9,9 @@ import re
 # Third-party modules
 
 # Owned modules
+from .enums.MigrationEnum import MCol
+from .enums.MessageEnum import LogM
+from .Log import Log
 
 
 class DatasetRecord(object):
@@ -38,3 +41,29 @@ class DatasetRecord(object):
         """
         for i in range(len(columns)):
             self._columns[i] = re.sub(r"[\n\t\s]*", "", columns[i])
+
+    def format(self, widths, log=0):
+        """Formats CSV record adding trailing spaces to each columns.
+
+        To ease reading and analyzing the file the columns are properly aligned based on an enumeration listing the width for each column.
+
+        Arguments:
+            record {list} -- CSV record to be formatted.
+            log {integer} -- Flag to indicate if the log is being ued or not.
+
+        Returns:
+            list -- Formatted CSV record.
+        """
+        record_formatted = []
+
+        if log == 1:
+            Log().logger.debug(LogM.FORMAT_RECORD.value %
+                               self._columns[MCol.DSN.value])
+
+        for index, value in enumerate(self._columns):
+            if len(value) < widths[index]:
+                record_formatted.append(value.ljust(widths[index]))
+            else:
+                record_formatted.append(value)
+
+        return record_formatted

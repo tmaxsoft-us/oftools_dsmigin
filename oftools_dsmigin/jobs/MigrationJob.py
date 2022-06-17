@@ -8,7 +8,6 @@ Typical usage example:
 """
 
 # Generic/Built-in modules
-import os
 import time
 
 # Third-party modules

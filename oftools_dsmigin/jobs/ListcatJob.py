@@ -3,7 +3,7 @@
 """"This module runs the Listcat Job.
 
 Typical usage example:
-  job = ListcatJob(storage_resource)
+  job = ListcatJob(record)
   job.run()
 """
 
@@ -88,10 +88,9 @@ class ListcatJob(Job):
     def _process_gdg(self, index, record, fields):
         """
         """
-        Log().logger.info(LogM.GDG.value % self._name)
         record[MCol.DSORG.value] = fields[0]
-        self._gdg = GDG(index, record)
-        self._gdg.get_from_mainframe()
+        gdg = GDG(index, record)
+        gdg.get_from_mainframe()
 
     def _get_from_mainframe(self, index, record):
         """Executes the FTP command on Mainframe to retrieve dataset info.
@@ -170,7 +169,7 @@ class ListcatJob(Job):
             status = 'FAILED'
             color = Color.RED.value
 
-        Log().logger.info(color + LogM.LISTCAT_MAINFRAME.value % status)
+        Log().logger.info(color + LogM.LISTCAT_MAINFRAME_STATUS.value % status)
 
         return rc
 
@@ -188,10 +187,10 @@ class ListcatJob(Job):
         dsn = record[MCol.DSN.value]
 
         if Context.listcat.data_csv != {} and dsn in Context(
-        ).listcat.data.keys():
+        ).listcat_records.keys():
             Log().logger.debug(LogM.DATASET_FOUND.value % self._name)
 
-            listcat_record = [dsn] + Context().listcat.data[dsn]
+            listcat_record = [dsn] + Context().listcat_records[dsn]
 
             record[MCol.RECFM.value] = listcat_record[LCol.RECFM.value]
             record[MCol.VSAM.value] = listcat_record[LCol.VSAM.value]
@@ -209,11 +208,33 @@ class ListcatJob(Job):
             Log().logger.info(LogM.DATASET_NOT_FOUND.value % self._name)
             status = 'FAILED'
             color = Color.RED.value
-            rc = -1
+            rc = 0
 
-        Log().logger.info(color + LogM.LISTCAT_FILE.value % status)
+        Log().logger.info(color + LogM.LISTCAT_FILE_STATUS.value % status)
 
         return rc
+
+    def _update_index_and_data(self, record):
+        """Take the listcat extracted data to update the CSV records.
+
+        It first updates the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.
+
+        Arguments:
+            record {list} -- The given listcat record containing dataset info.
+        """
+        index_and_data = [
+            record[MCol.DSN.value] + '.INDEX', record[MCol.DSN.value] + '.DATA'
+        ]
+
+        for dsn in index_and_data:
+            if dsn in Context().dsn_list:
+                # Replace the value in the column named DSORG by VSAM in the records list
+                record[MCol.DSORG.value] = 'VSAM'
+                # Identify the position of the index DSN in the dsn_list
+                i = Context().dsn_list.index(dsn)
+                # Remove the line where this DSN appears in the records list
+                Context().records.remove(Context().records[i])
+                Log().logger.info(LogM.REMOVE_DATASET.value % (self._name, dsn))
 
     def run(self, record, index):
         """Performs all the steps to exploit Mainframe info, the provided listcat file and updates the migration records accordingly.
@@ -243,7 +264,10 @@ class ListcatJob(Job):
 
         # Retrieving info from listcat file for VSAM datasets
         if record[MCol.DSORG.value] == 'VSAM':
-            rc2 = self._get_from_file(record)
+            if Context().listcat_records != {}:
+                rc2 = self._get_from_file(record)
+
+            self._update_index_and_data(record)
 
         # Processing the result of the listcat
         if rc1 == 0 and rc2 == 0:

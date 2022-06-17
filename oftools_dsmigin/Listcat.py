@@ -39,45 +39,38 @@ class Listcat(object):
         read_csv() -- Reads the content of the listcat CSV file and store the result in a list.
     """
 
-    def __init__(self, file_path):
+    def __init__(self, txt_file_path):
         """Initializes the class with all the attributes.
         """
-        self._name = 'listcat'
         self._headers = [column.name for column in LCol]
+        self._file_path = Context().listcat_directory + '/listcat.csv'
 
-        self._file_path_csv = Context().listcat_directory + '/listcat.csv'
-        self._file_path_txt = file_path
+        self._name = 'listcat'
 
-        self._data_csv = collections.OrderedDict()
-        self._data_txt = []
+        if txt_file_path:
+            self._generate(txt_file_path)
 
-    @property
-    def data(self):
-        """Getter method for the attribute _data.
+        self._read()
+
+    def _read(self):
+        """Reads the content of the listcat CSV file and store the result in a list.
+
+        One listcat file can contains the info of one or multiple datasets.
         """
-        return self._data_csv
+        Log().logger.debug(LogM.LISTCAT_READ.value % self._file_path)
 
-    def _read(self, extension=''):
-        """Reads the listcat file and store the output.
+        if FileHandler().check_path_exists(self._file_path):
+            data = FileHandler().read_file(self._file_path)
 
-        This can read a listcat text file and store the output in a list, or read a listcat CSV file and store the output in a dictionary
+            if data != None:
 
-        Arguments:
-            extension {string} --
-        """
-        if extension == 'txt':
-            data = FileHandler().read_file(self._file_path_txt)
-            self._data_txt = data.splitlines()
-
-        elif extension == 'csv':
-            data = FileHandler().read_file(self._file_path_csv)
-            for i in range(1, len(data)):
-                row = data[i]
-                self._data_csv[row[0]] = row[1:]
+                for i in range(1, len(data)):
+                    row = data[i]
+                    Context().listcat_records[row[0]] = row[1:]
         else:
-            print('error')
+            Log().logger.warning(LogM.LISTCAT_SKIP.value % self._file_path)
 
-    def _analyze_txt(self):
+    def _analyze(self, data_list):
         """Analyzes the data extracted from the listcat text file.
 
         Returns:
@@ -85,8 +78,10 @@ class Listcat(object):
         """
         rc = 0
         flag = 0
+        lines = data_list.splitlines()
+        data_dict = collections.OrderedDict()
 
-        for line in self._data_txt:
+        for line in lines:
 
             if 'LISTING FROM CATALOG' in line:
                 fields = line.split(' -- ')
@@ -99,7 +94,7 @@ class Listcat(object):
                 fields = line.split('--')
                 if not fields[1].startswith('...'):
                     Log().logger.debug(LogM.DATASET_IDENTIFIED.value %
-                                       (self.name, fields[1]))
+                                       fields[1])
                     flag = 2
                     dsn = fields[1]
                     recfm = 'VB'
@@ -137,25 +132,25 @@ class Listcat(object):
 
             # Re-initialization for the next dataset
             elif flag == 3 and 'STATISTICS' in line:
-                self._data[dsn] = [
+                data_dict[dsn] = [
                     recfm, vsam, keyoff, keylen, maxlrecl, avglrecl, cisize,
                     catalog
                 ]
                 flag = 0
 
+        #TODO No way to fail this at the moment
         if rc == 0:
             status = 'SUCCESS'
             color = Color.GREEN.value
-        #TODO No way to fail this at the moment
         else:
             status = 'FAILED'
             color = Color.RED.value
 
-        Log().logger.info(color + LogM.LISTCAT_CSV_FILE_STATUS.value % status)
+        Log().logger.info(color + LogM.LISTCAT_GEN_STATUS.value % status)
 
-        return rc
+        return data_dict
 
-    def _write_csv(self):
+    def _write(self, content):
         """Writes the dataset listcat records changes to the CSV file.
         
         Opens the CSV file, writes the headers in the first row and then writes the data from the records.
@@ -163,84 +158,29 @@ class Listcat(object):
         Returns:
             integer -- Return code of the method.
         """
+        Log().logger.debug(LogM.LISTCAT_WRITE.value % self._file_path)
+
         # Writing column headers to CSV file
-        if FileHandler().check_path_exists(self._file_path_csv) is False:
-            rc = FileHandler().write_file(self._file_path_csv, self._headers)
+        if FileHandler().check_path_exists(self._file_path) is False:
+            headers = ', '.join(self._headers)
+            rc = FileHandler().write_file(self._file_path, headers)
 
         if rc != 0:
             return rc
 
         # Writing records to CSV file
-        for key, value in self._data_csv.items():
-            record = [key] + value
-            rc = FileHandler().write_file(self._file_path_csv, record, 'a')
-            if rc != 0:
-                break
+        rc = FileHandler().write_file(self._file_path, content, 'a')
 
         return rc
 
-    def generate_csv(self):
+    def generate(self, file_path_txt):
         """Main method to convert the listcat TXT file to a CSV file.
         """
         Log().logger.debug(LogM.START_LISTCAT_GEN.value % self._name)
 
-        self._read('txt')
-        self._analyze_txt()
-        self._write_csv()
+        data = FileHandler().read_file(file_path_txt)
+        data = self._analyze(data)
+
+        self._write(data)
 
         Log().logger.debug(LogM.END_LISTCAT_GEN.value % self._name)
-
-    def read_csv(self):
-        """Reads the content of the listcat CSV file and store the result in a list.
-
-        One listcat file can contains the info of one or multiple datasets.
-        """
-
-        data_csv = FileHandler().read_file(self._file_path_csv)
-
-        for i in range(1, len(data_csv)):
-            row = data_csv[i]
-            self._data_csv[row[0]] = row[1:]
-
-    def update_index_and_data(self, record):
-        """Take the listcat extracted data to update the CSV records.
-
-        It first updates the CSV records with different data regarding the VSAM datasets, data required for a successful migration of this type of dataset. Then, it also look for each VSAM datasets if there are the equivalent 'INDEX and 'DATA'. These datasets are not useful for migration, so the tool removes them.
-
-        Arguments:
-            record {list} -- The given listcat record containing dataset info.
-
-        Returns:
-            integer -- Return code of the method.
-        """
-        rc = 0
-
-        if self._data != None:
-            dsn_list = []
-            records = Context().records
-            for dataset_record in records:
-                dsn_list.append(dataset_record.columns[MCol.DSN.value])
-            # dsn_list = [records.columns[Col.DSN.value] for _ in records]
-
-            index_dsn = record[MCol.DSN.value] + '.INDEX'
-            if index_dsn in dsn_list:
-                # Replace the value in the column named DSORG by VSAM in the records list
-                record[MCol.DSORG.value] = 'VSAM'
-                # Identify the position of the index DSN in the dsn_list
-                i = dsn_list.index(index_dsn)
-                # Remove the line where this DSN appears in the records list
-                Context().records.remove(Context().records[i])
-                Log().logger.info(LogM.REMOVE_DATASET.value %
-                                  (self._name, index_dsn))
-
-            data_dsn = record[MCol.DSN.value] + '.DATA'
-            if data_dsn in dsn_list:
-                record[MCol.DSORG.value] = 'VSAM'
-                # Identify the position of the data DSN in the dsn_list
-                j = dsn_list.index(data_dsn)
-                # Remove the line where this DSN appears in the records list
-                Context().records.remove(Context().records[j])
-                Log().logger.info(LogM.REMOVE_DATASET.value %
-                                  (self._name, data_dsn))
-
-        return rc

@@ -13,7 +13,6 @@ Typical usage example:
 import configparser
 import collections
 import csv
-import hashlib
 import json
 import os
 import shutil
@@ -221,11 +220,15 @@ class FileHandler(object, metaclass=SingletonMeta):
                     if extension in self._config_extensions:
                         content.write(fd)
                     elif extension == 'csv':
-                        writer = csv.writer(fd, delimiter=',')
-                        if isinstance(content, str):
-                            writer.writerow(content)
-                        elif isinstance(content, list):
+                        if isinstance(content, collections.OrderedDict):
+                            writer = csv.DictWriter(fd, delimiter=',')
                             writer.writerows(content)
+                        else:
+                            writer = csv.writer(fd, delimiter=',')
+                            if isinstance(content, str):
+                                writer.writerow(content)
+                            elif isinstance(content, list):
+                                writer.writerows(content)
                     elif extension == 'json':
                         json.dump(content, fd)
                     elif extension in self._text_extensions:
