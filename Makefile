@@ -1,24 +1,24 @@
-#================================================================#
-#                   INITIALIZATION                               #
-#================================================================#
+#==========================================================================#
+#                   INITIALIZATION                                         #
+#==========================================================================#
 init:
 	pip3 install -r requirements.txt
 
 init_user:
 	pip3 install -r requirements.txt --user
 
-#================================================================#
-#                   BUILD AND REMOVE                             #
-#================================================================#
+#==========================================================================#
+#                   BUILD AND REMOVE                                       #
+#==========================================================================#
 build:
 	python3 setup.py sdist
 
 remove:
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 
-#================================================================#
-#                   INSTALLATION                                 #
-#================================================================#
+#==========================================================================#
+#                   INSTALLATION                                           #
+#==========================================================================#
 
 # Default
 install:
@@ -26,10 +26,10 @@ install:
 	pip3 install dist/*.whl
 uninstall:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 reinstall:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl
 
@@ -39,10 +39,10 @@ install_user:
 	pip3 install dist/*.whl --user
 uninstall_user:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 reinstall_user:
 	pip3 uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	pip3 install dist/*.whl --user
 
@@ -52,10 +52,10 @@ install_diff:
 	python3 -m pip install dist/*.whl
 uninstall_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 reinstall_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	python3 -m pip install dist/*.whl
 
@@ -65,16 +65,17 @@ install_user_diff:
 	python3 -m pip install dist/*.whl --user
 uninstall_user_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 reinstall_user_diff:
 	python3 -m pip uninstall -y oftools-dsmigin
-	rm -r AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
+	rm -rf AUTHORS build ChangeLog dist oftools_dsmigin.egg-info
 	python3 setup.py bdist_wheel
 	python3 -m pip install dist/*.whl --user
 
-#================================================================#
-#                   TESTING                                      #
-#================================================================#
+
+#==========================================================================#
+#                   TESTING                                                #
+#==========================================================================#
 test_func:
 	pytest --color=yes --durations=5 -v -c tests/pytest.ini tests/functional/
 
@@ -87,9 +88,9 @@ coverage:
 	coverage run --source=oftools_compile -m pytest --color=yes -v -s
 	coverage report --show-missing
 
-#================================================================#
-#                   PyPI UPLOADING                               #
-#================================================================#
+#==========================================================================#
+#                   PyPI UPLOADING                                         #
+#==========================================================================#
 upload:
 	python3 setup.py sdist upload -r pypi
 
@@ -99,9 +100,8 @@ upload_test:
 remove_pypi:
 	curl --form ":action=remove_pkg" --form "name=oftools-dsmigin" --form "version=0.0.1" URL -u id:pass
 
-#================================================================#
-#                   FORMATTING                                   #
-#================================================================#
+#==========================================================================#
+#                   FORMATTING                                             #
+#==========================================================================#
 yapf:
 	yapf3 --style='{ based_on_style: google }' *.py -ir
-	
