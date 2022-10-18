@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Set of methods useful in any module.
 
-This module gathers a set of methods that are useful in many other modules. When a method is widely 
+This module gathers a set of methods that are useful in many other modules. When a method is widely
 used in different modules, a general version of it is created and can be found here.
 
 Typical usage example:
@@ -28,8 +28,8 @@ from ..Log import Log
 
 
 class SingletonMeta(type):
-    """This pattern restricts the instantiation of a class to one object. 
-    
+    """This pattern restricts the instantiation of a class to one object.
+
     It is a type of creational pattern and involves only one class to create methods and specified objects. It provides a global point of access to the instance created.
     """
     _instances = {}
@@ -62,7 +62,7 @@ class FileHandler(object, metaclass=SingletonMeta):
         delete_directory(path) -- Deletes an entire directory tree, whether it is empty or not.
         empty_directory(path) -- Removes all files and subdirectories from a given directory.
         is_a_directory(path) -- Evaluates if the given path is a directory or not.
-        
+
         check_path_exists(path) -- Evaluates if the given path exists or not.
         check_write_access (path) -- Evaluates if the user has write access on the given path.
         get_files (path) -- Gets the list of files in a given path.
@@ -99,11 +99,11 @@ class FileHandler(object, metaclass=SingletonMeta):
             OSError -- Exception raised if an error didn't already raised one of the previous exceptions.
 
             MissingSectionHeaderError -- Exception raised if there is no section in the config file specified.
-            DuplicateSectionError -- Exception raised if there are two sections with the same name in the 
+            DuplicateSectionError -- Exception raised if there are two sections with the same name in the
                 config file specified.
-            DuplicateOptionError -- Exception raised if there is a duplicate option in one of the sections 
+            DuplicateOptionError -- Exception raised if there is a duplicate option in one of the sections
                 of the config file specified.
-            
+
             JSONDecodeError -- Exception raised if there is an error decoding the JSON file specified.
             ValueError -- Exception raised if the first argument is None / empty string.
             AttributeError -- Exception raised if a requested xml.sax feature is not found in xml.sax.handler.
@@ -117,7 +117,7 @@ class FileHandler(object, metaclass=SingletonMeta):
                 if os.path.getsize(path_expand) <= 0:
                     raise SystemError()
 
-                with open(path_expand, mode='r') as fd:
+                with open(path_expand, mode='r', encoding='utf-8') as fd:
                     extension = path_expand.rsplit('.', 1)[1]
 
                     if extension in self._config_extensions:
@@ -159,7 +159,8 @@ class FileHandler(object, metaclass=SingletonMeta):
             Log().logger.critical(ErrorM.INDEX_EXTENSION.value % path)
             sys.exit(-1)
         except TypeError:
-            Log().logger.critical(ErrorM.TYPE_EXTENSION.value % path)
+            Log().logger.critical(ErrorM.TYPE_EXTENSION.value %
+                                  (extension, path_expand))
             sys.exit(-1)
         except OSError as error:
             Log().logger.critical(ErrorM.OS_READ.value % error)
@@ -193,16 +194,16 @@ class FileHandler(object, metaclass=SingletonMeta):
 
     def write_file(self, path, content, mode='w'):
         """Writes content to the file.
-        
+
         Arguments:
             path {string} -- Absolute path of the file.
             content {string or list[string]} -- Content that needs to be written to the file.
-            mode {string} -- Mode used to write the file. Most common values: 'a' or 
+            mode {string} -- Mode used to write the file. Most common values: 'a' or
             'w'.
 
         Returns:
             integer -- Return code of the method.
-        
+
         Raises:
             IsADirectoryError -- Exception raised if a directory is specified instead of a file.
             PermissionError -- Exception raised if  the user does not have the required permissions to write to the file.
@@ -214,7 +215,7 @@ class FileHandler(object, metaclass=SingletonMeta):
 
             if os.path.isdir(path_expand) is False:
 
-                with open(path_expand, mode) as fd:
+                with open(path_expand, mode, encoding='utf-8') as fd:
                     extension = path_expand.rsplit('.', 1)[1]
 
                     if extension in self._config_extensions:
@@ -253,7 +254,7 @@ class FileHandler(object, metaclass=SingletonMeta):
             Log().logger.critical(ErrorM.INDEX_EXTENSION.value % path)
             rc = -1
         except TypeError:
-            Log().logger.critical(ErrorM.TYPE_EXTENSION.value % path)
+            Log().logger.critical(ErrorM.TYPE_EXTENSION.value % (extension,path_expand))
             rc = -1
 
         return rc
@@ -268,7 +269,7 @@ class FileHandler(object, metaclass=SingletonMeta):
 
         Returns:
             integer -- Return code of the method.
-        
+
         Raises:
             shutil.SameFileError -- Exception raised if the file already exist.
             OSError -- Exception raised if an error didn't already raised one of the previous exceptions.
@@ -299,7 +300,7 @@ class FileHandler(object, metaclass=SingletonMeta):
 
         Returns:
             boolean -- True if the file extension is correct and False otherwise.
-        
+
         Raises:
             IndexError -- Exception raised if the given file has an incorrect extension.
             TypeError -- Exception raised if the extension does not match.
@@ -326,7 +327,7 @@ class FileHandler(object, metaclass=SingletonMeta):
     # Directory related methods
 
     @staticmethod
-    def create_directory(path):
+    def create_directory(path, type_dir=''):
         """Creates the given directory if it does not already exists.
 
         Arguments:
@@ -334,7 +335,7 @@ class FileHandler(object, metaclass=SingletonMeta):
 
         Returns:
             integer -- Return code of the method.
-        
+
         Raises:
             FileExistsError -- Exception raised if the directory already exists.
             OSError -- Exception raised if an error didn't already raised one of the previous exceptions.
@@ -352,8 +353,11 @@ class FileHandler(object, metaclass=SingletonMeta):
             else:
                 raise FileExistsError()
         except FileExistsError:
-            Log().logger.debug(ErrorM.FILE_EXISTS.value % path)
-            rc = 1
+            if type_dir == 'po':
+                Log().logger.debug(ErrorM.FILE_EXISTS.value % path)
+                rc = 1
+            else:
+                rc = 0
         except OSError as error:
             Log().logger.critical(ErrorM.OS_DIR_CREATION.value % error)
             sys.exit(-1)
@@ -409,31 +413,50 @@ class FileHandler(object, metaclass=SingletonMeta):
         else:
             return rc
 
+    @staticmethod
+    def is_a_directory(path):
+        """Evaluates if the given path is a directory or not.
+
+        Arguments:
+            path {string} -- Absolute path of the directory.
+
+        Returns:
+            boolean -- True if the path is a directory, False otherwise.
+
+        Raises:
+            NotADirectoryError -- Exception raised if the path is not a directory.
+        """
+        try:
+            path_expand = os.path.expandvars(path)
+
+            if os.path.isdir(path_expand):
+                is_a_directory = True
+            else:
+                raise NotADirectoryError()
+        except NotADirectoryError:
+            Log().logger.critical(ErrorM.NOT_A_DIR.value % path)
+            is_a_directory = False
+
+        return is_a_directory
+
     # Other
 
     @staticmethod
     def check_path_exists(path):
         """Evaluates if the given path exists or not.
-        
+
         Arguments:
             path {string} -- Absolute path of the file or directory.
 
         Returns:
             boolean -- True of the path exists, False otherwise.
-
-        Raises:
-            FileNotFoundError -- Exception raised if the path does not exist or is not found.
         """
-        try:
-            path_expand = os.path.expandvars(path)
+        path_expand = os.path.expandvars(path)
 
-            if os.path.exists(path_expand):
-                path_exists = True
-            else:
-                raise FileNotFoundError()
-        except FileNotFoundError:
-            Log().logger.critical(ErrorM.FILE_NOT_FOUND.value % path)
-            sys.exit(-1)
+        if os.path.exists(path_expand):
+            path_exists = True
+        else:
+            path_exists = False
 
         return path_exists
 

@@ -8,10 +8,10 @@ Typical usage example:
 """
 
 # Generic/Built-in modules
-import aenum
 import enum
 
 # Third-party modules
+import aenum
 
 # Owned modules
 

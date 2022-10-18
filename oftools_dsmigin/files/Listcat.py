@@ -44,8 +44,6 @@ class Listcat(object):
         self._headers = [column.name for column in LCol]
         self._file_path = Context().listcat_directory + '/listcat.csv'
 
-        self._name = 'listcat'
-
         if txt_file_path:
             self._generate(txt_file_path)
 
@@ -61,11 +59,11 @@ class Listcat(object):
         if FileHandler().check_path_exists(self._file_path):
             data = FileHandler().read_file(self._file_path)
 
-            if data != None:
+            if data is not None:
 
                 for i in range(1, len(data)):
                     row = data[i]
-                    Context().listcat_records[row[0]] = row[1:]
+                    Context().listcat_records[row[0]] = row
         else:
             Log().logger.warning(LogM.LISTCAT_SKIP.value % self._file_path)
 
@@ -132,8 +130,8 @@ class Listcat(object):
             # Re-initialization for the next dataset
             elif flag == 3 and 'STATISTICS' in line:
                 data_dict[dsn] = [
-                    recfm, vsam, keyoff, keylen, maxlrecl, avglrecl, cisize,
-                    catalog
+                    dsn, recfm, vsam, keyoff, keylen, maxlrecl, avglrecl,
+                    cisize, catalog
                 ]
                 flag = 0
 
@@ -149,9 +147,9 @@ class Listcat(object):
 
         return data_dict
 
-    def _write(self, content):
+    def _write(self, data):
         """Writes the dataset listcat records changes to the CSV file.
-        
+
         Opens the CSV file, writes the headers in the first row and then writes the data from the records.
 
         Returns:
@@ -161,25 +159,25 @@ class Listcat(object):
 
         # Writing column headers to CSV file
         if FileHandler().check_path_exists(self._file_path) is False:
-            headers = ', '.join(self._headers)
-            rc = FileHandler().write_file(self._file_path, headers)
+            rc = FileHandler().write_file(self._file_path, [self._headers])
 
-        if rc != 0:
-            return rc
+            if rc != 0:
+                return rc
 
         # Writing records to CSV file
+        content = data.values()
         rc = FileHandler().write_file(self._file_path, content, 'a')
 
         return rc
 
-    def generate(self, file_path_txt):
+    def _generate(self, file_path_txt):
         """Main method to convert the listcat TXT file to a CSV file.
         """
-        Log().logger.debug(LogM.START_LISTCAT_GEN.value % self._name)
+        Log().logger.debug(LogM.START_LISTCAT_GEN.value)
 
         data = FileHandler().read_file(file_path_txt)
         data = self._analyze(data)
 
         self._write(data)
 
-        Log().logger.debug(LogM.END_LISTCAT_GEN.value % self._name)
+        Log().logger.debug(LogM.END_LISTCAT_GEN.value)

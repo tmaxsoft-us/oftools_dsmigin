@@ -42,7 +42,7 @@ class FTPJob(Job):
     """
 
     def _analyze(self, record):
-        """Assesses download eligibility. 
+        """Assesses download eligibility.
 
         This method double check multiple parameters in the migration dataset records to make sure that the given dataset download can be processed without error:
             - check missing information
@@ -53,7 +53,7 @@ class FTPJob(Job):
 
         Arguments:
             record {list} -- The given migration record containing dataset info, which needs a verification prior download.
-        
+
         Returns:
             integer - Return code of the method.
         """
@@ -62,7 +62,7 @@ class FTPJob(Job):
         rc = 0
 
         unset_list = ('', ' ')
-        skip_message = LogM.SKIP.value % (self._name, record[MCol.DSN.value])
+        skip_message = LogM.SKIP_DATASET.value % (self._name, record[MCol.DSN.value])
 
         if record[MCol.FTP.value] == 'F':
             Log().logger.debug(LogM.COL_F.value % (self._name, 'FTP'))
@@ -77,7 +77,7 @@ class FTPJob(Job):
                                   LogM.COL_NOT_SET.value % 'LISTCATDATE')
                 rc = 0
             elif record[MCol.FTP.value] == 'N':
-                Log().logger.debug(skip_message + LogM.COL_N % 'FTP')
+                Log().logger.debug(skip_message + LogM.COL_N.value % 'FTP')
                 rc = 1
             elif record[MCol.FTP.value] in ('', 'Y'):
                 Log().logger.debug(LogM.COL_VALUE.value %
@@ -134,7 +134,7 @@ class FTPJob(Job):
 
         return rc
 
-    def _download_PS(self, dsn, rdwftp):
+    def _download_ps(self, dsn, rdwftp):
         """Downloads dataset with DSORG set to PS.
 
         Arguments:
@@ -152,7 +152,7 @@ class FTPJob(Job):
 
         return rc
 
-    def _download_PO(self, dsn, rdwftp):
+    def _download_po(self, dsn, rdwftp):
         """Downloads dataset with DSORG set to PO.
 
         Arguments:
@@ -162,9 +162,9 @@ class FTPJob(Job):
         Returns:
             integer -- Return code of the method.
         """
-        FileHandler().create_directory(dsn)
+        FileHandler().create_directory(dsn, 'po')
         os.chdir(dsn)
-        
+
         ftp_command = rdwftp + '\ncd ' + dsn + '\nmget -c *'
 
         Log().logger.debug(LogM.COMMAND.value % (self._name, ftp_command))
@@ -174,7 +174,7 @@ class FTPJob(Job):
 
         return rc
 
-    def _download_VSAM(self, dsn, rdwftp):
+    def _download_vsam(self, dsn, rdwftp):
         """Downloads dataset with DSORG set to VSAM.
 
         It is not downloading directly the VSAM dataset but the flat file where the VSAM dataset has been unloaded.
@@ -259,11 +259,11 @@ class FTPJob(Job):
         Log().logger.info(LogM.DOWNLOAD.value %
                           (self._name, record[MCol.DSN.value]))
         if record[MCol.DSORG.value] == 'PS':
-            rc = self._download_PS(record[MCol.DSN.value], rdwftp)
+            rc = self._download_ps(record[MCol.DSN.value], rdwftp)
         elif record[MCol.DSORG.value] == 'PO':
-            rc = self._download_PO(record[MCol.DSN.value], rdwftp)
+            rc = self._download_po(record[MCol.DSN.value], rdwftp)
         elif record[MCol.DSORG.value] == 'VSAM':
-            rc = self._download_VSAM(record[MCol.DSN.value], rdwftp)
+            rc = self._download_vsam(record[MCol.DSN.value], rdwftp)
         elif record[MCol.VOLSER.value] == 'Tape':
             rc = self._download_tape(record, rdwftp)
 
@@ -300,7 +300,7 @@ class FTPJob(Job):
         Arguments:
             record {list} -- Migration record containing dataset info.
 
-        Returns: 
+        Returns:
             integer -- Return code of the job.
         """
         Log().logger.debug(LogM.START_JOB.value % self._name)

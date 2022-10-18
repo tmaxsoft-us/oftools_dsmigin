@@ -29,10 +29,12 @@ INTERRUPT = False
 
 
 def main():
+    """Main method for the program.
+    """
     return Main().run()
 
 
-class Main(object):
+class Main():
     """Main class containing the methods for parsing the command arguments and running OpenFrame Tools Dataset Migration.
 
     Methods:
@@ -46,8 +48,8 @@ class Main(object):
     def _parse_arg():
         """Parses command-line options.
 
-        The program defines what arguments it requires, and argparse will figure out how to parse 
-        those out of sys.argv. The argparse module also automatically generates help, usage 
+        The program defines what arguments it requires, and argparse will figure out how to parse
+        those out of sys.argv. The argparse module also automatically generates help, usage
         messages and issues errors when users give the program invalid arguments.
 
         Returns:
@@ -155,7 +157,7 @@ class Main(object):
         optional.add_argument(
             '--enable-column',
             action='store',
-            dest='enable_column',
+            dest='enable_column_list',
             help=
             'enable CSV columns instead of the default value, colon-separated. Supported columns:\n- CATALOG (default is SYS1.MASTER.ICFCAT)\n- VOLSER (default is DEFVOL)',
             metavar='COLUMN',
@@ -194,7 +196,7 @@ class Main(object):
         optional.add_argument(
             '--init',
             action='store_true',
-            dest='init',
+            dest='initialization',
             help=
             'flag used to initialize the CSV file and the working directory specified',
             required=False)
@@ -204,7 +206,7 @@ class Main(object):
             action='store',
             dest='listcat_gen',
             help=
-            'text file name to append datasets record to a CSV file for listcat information',
+            'text file name used to append datasets records to a CSV file for listcat information',
             metavar='FILE',
             required=False,
             type=str)
@@ -316,114 +318,103 @@ class Main(object):
         raise KeyboardInterrupt()
 
     @staticmethod
-    def _create_jobs(args, storage_resource):
+    def _create_jobs(args):
         """Creates job depending on the input parameters.
 
         Arguments:
             args {ArgParse} -- Contains all the input parameters of the program.
-            storage_resource {Storage Resource} -- Could be a CSV file or a database object, used to store dataset records.
 
         Returns:
             list[Job] -- List of Jobs.
-
-        Raises:
-            #TODO Complete docstring, maybe change the behavior to print traceback only with DEBUG as log level
         """
         jobs = []
-        job_factory = JobFactory(storage_resource)
+        job_factory = JobFactory()
 
-        try:
-            if args.listcat:
-                listcat = Listcat(args.listcat_gen)
-                Context().generations = args.generations
-                Context().ip_address = args.ip_address
-                Context().listcat = listcat
-                job = job_factory.create('listcat')
-                jobs.append(job)
-            if args.ftp:
-                Context().ip_address = args.ip_address
-                Context().prefix = args.prefix
-                job = job_factory.create('ftp')
-                jobs.append(job)
-            if args.migration:
-                Context().conversion = args.conversion
-                Context().enable_column_list = args.enable_column
-                Context().encoding_code = args.encoding_code
-                Context().force = args.force
-                Context().test = args.test
-                job = job_factory.create('migration')
-                jobs.append(job)
-        except:
-            traceback.print_exc()
-            Log().logger.critical(ErrorM.JOB.value)
-            Log().logger.critical(ErrorM.ABORT.value)
-            sys.exit(-1)
-        else:
-            return jobs
+        if args.listcat:
+            Listcat(args.listcat_gen)
+            Context().generations = args.generations
+            Context().ip_address = args.ip_address
+            job = job_factory.create('listcat')
+            jobs.append(job)
+
+        if args.ftp:
+            Context().ip_address = args.ip_address
+            Context().prefix = args.prefix
+            job = job_factory.create('ftp')
+            jobs.append(job)
+
+        if args.migration:
+            Context().conversion = args.conversion
+            Context().enable_column_list = args.enable_column_list
+            Context().encoding_code = args.encoding_code
+            Context().force = args.force
+            Context().test = args.test
+            job = job_factory.create('migration')
+            jobs.append(job)
+
+        return jobs
 
     def run(self):
         """Performs all the steps to execute jobs of oftools_dsmigin.
 
         Returns:
             integer -- General return code of the program.
-            
+
         Raises:
             KeyboardInterrupt -- Exception raised if the user press Ctrl + C.
         """
         rc = 0
-        # Normal if there is an error on Windows, SIGQUIT only exist on Unix
+        # Normal if there is an error on Windows, SIGQUIT only exists on Unix
         signal.signal(signal.SIGQUIT, self._signal_handler)
 
-        # For testing purposes. allow to remove logs when executing coverage
+        # For testing purposes, allow to remove logs when executing coverage
         # logging.disable(logging.CRITICAL)
         Log().open_stream()
-        Log().set_level(args.log_level)
-        Log().logger.debug(' '.join((arg for arg in sys.argv)))
 
         # Parse command-line options
         args = self._parse_arg()
 
+        # Set log level and log oftools_dsmigin command as DEBUG level
+        Log().set_level(args.log_level)
+        Log().logger.debug(' '.join((arg for arg in sys.argv)))
+
         # Initialize variables for program execution
-        Context().init = args.init
+        Context().initialization = args.initialization
         Context().number = args.number
         Context().tag = args.tag
         Context().working_directory = args.working_directory
         count_dataset = 0
 
+        # Initialize log file
+        log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
+        ).time_stamp('full') + '.log'
+        log_file_path = Context().log_directory + '/' + log_file_name
+        Log().open_file(log_file_path)
+
+        # Storage resource initialization
+        storage_resource = CSV(args.csv)
+
         try:
-            # Initialize log file
-            log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
-            ).full_timestamp + '.log'
-            log_file_path = Context().log_directory + '/' + log_file_name
-            Log().open_file(log_file_path)
-
-            # CSV file initialization
-            storage_resource = CSV(args.csv)
-
-            # Adding manual dataset input to the records
-            if args.dsn:
-                dataset_names = args.dsn.split(':')
-                for dsn in dataset_names:
-                    storage_resource.add_record(dsn)
+            # Add manual dataset input to the storage resource
+            storage_resource.add_records(args.dsn)
 
             # Create jobs
             jobs = self._create_jobs(args)
 
             for index, value in enumerate(Context().records):
                 try:
-                    # Initialization of variables before running the jobs
                     record = value.columns
                     for job in jobs:
                         rc = job.run(record, index)
                         if rc == 0:
                             storage_resource.write(index)
                         else:
-                            if rc == 1:
-                                Log().logger.debug(LogM.MAIN_SKIP.value % rc)
-                                continue
-                            else:
+                            if rc != 1:
                                 Log().logger.error(ErrorM.ABORT.value)
                                 break
+
+                            Log().logger.debug(LogM.SKIP.value % rc)
+                            continue
 
                     if rc == 0:
                         count_dataset += 1
@@ -438,11 +429,11 @@ class Main(object):
                         else:
                             Log().logger.info(LogM.COUNT.value % count_dataset)
 
-                except KeyboardInterrupt:
+                except KeyboardInterrupt as err:
                     #TODO Find what goes here
 
                     if INTERRUPT is True:
-                        raise KeyboardInterrupt()
+                        raise KeyboardInterrupt() from err
 
                 # rc = statistics.run()
                 # if rc < 0:

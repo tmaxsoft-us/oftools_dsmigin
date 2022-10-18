@@ -28,7 +28,7 @@ class ListcatJob(Job):
     """A class used to run the Listcat Job.
 
     This class contains a run method that executes all the steps of the job. It handles both dataset info retrieval from the Mainframe as well as the VSAM dataset info retrieval from a listcat file.
-    
+
     Attributes:
         Inherited from Job module.
 
@@ -53,7 +53,7 @@ class ListcatJob(Job):
         """
         Log().logger.debug(LogM.ELIGIBILITY.value %
                            (self._name, record[MCol.DSN.value]))
-        skip_message = LogM.SKIP.value % ('listcat', record[MCol.DSN.value])
+        skip_message = LogM.SKIP_DATASET.value % ('listcat', record[MCol.DSN.value])
 
         if record[MCol.LISTCAT.value] == 'F':
             Log().logger.debug(LogM.COL_F.value % (self._name, 'LISTCAT'))
@@ -89,8 +89,8 @@ class ListcatJob(Job):
         """
         """
         record[MCol.DSORG.value] = fields[0]
-        gdg = GDG(index, record)
-        gdg.get_from_mainframe()
+        self._gdg = GDG(index, record)
+        self._gdg.get_from_mainframe()
 
     def _get_from_mainframe(self, index, record):
         """Executes the FTP command on Mainframe to retrieve dataset info.
@@ -159,12 +159,12 @@ class ListcatJob(Job):
             else:
                 raise SystemError()
 
-        except SystemError as e:
+        except SystemError as err:
             if rc == 0:
-                Log().logger.info(e)
+                Log().logger.info(err)
                 rc = -1
             else:
-                Log().logger.error(e)
+                Log().logger.error(err)
 
             status = 'FAILED'
             color = Color.RED.value
@@ -186,11 +186,11 @@ class ListcatJob(Job):
         """
         dsn = record[MCol.DSN.value]
 
-        if Context.listcat.data_csv != {} and dsn in Context(
+        if Context().listcat_records != {} and dsn in Context(
         ).listcat_records.keys():
             Log().logger.debug(LogM.DATASET_FOUND.value % self._name)
 
-            listcat_record = [dsn] + Context().listcat_records[dsn]
+            listcat_record = Context().listcat_records[dsn]
 
             record[MCol.RECFM.value] = listcat_record[LCol.RECFM.value]
             record[MCol.VSAM.value] = listcat_record[LCol.VSAM.value]
@@ -245,7 +245,7 @@ class ListcatJob(Job):
                 record {list} -- Migration record containing dataset info.
                 index {integer} -- Position of the record in the Context().records list.
 
-            Returns:  
+            Returns:
                 integer -- Return code of the job.
             """
         Log().logger.debug(LogM.START_JOB.value % self._name)
@@ -259,7 +259,7 @@ class ListcatJob(Job):
         start_time = time.time()
 
         # Retrieve info from mainframe using FTP
-        if Context().ip_address != None:
+        if Context().ip_address is not None:
             rc1 = self._get_from_mainframe(index, record)
 
         # Retrieving info from listcat file for VSAM datasets

@@ -67,6 +67,7 @@ class ErrorM(enum.Enum):
     OS_COPY = 'OSError: Failed to copy: %s'
     OS_DELETE = 'OSError: Failed to delete directory: %s'
     OS_DIRECTORY_CREATION = 'OSError: Directory creation failed: %s'
+    OS_READ = 'OSError: Failed to read the file: %s'
     PERMISSION = 'PermissionError: Permission denied: %s'
     SHUTIL_SAME_FILE = 'shutil.SameFileError: %s and %s are the same file'
     SYSTEM_EMPTY = 'EmptyError: File empty: %s'
@@ -102,7 +103,7 @@ class LogM(enum.Enum):
     FIELDS_INCOMPLETE = '[%s] Fields incomplete'
     FTP_EMPTY = '[%s] FTP result empty'
     NOT_SUPPORTED = '[%s] Scenario not supported'
-    SKIP = '[%s] Skipping dataset: %s: '
+    SKIP_DATASET = '[%s] Skipping dataset: %s: '
     START_JOB = '[%s] Starting Job'
 
     # Context module
@@ -176,7 +177,7 @@ class LogM(enum.Enum):
     COUNT = 'Current dataset count: %d'
     COUNT_MAX = 'Current dataset count: %d/%d'
     LIMIT = 'Limit of dataset processing reached'
-    MAIN_SKIP = 'Skipping dataset: rc = %d'
+    SKIP = 'Skipping dataset: rc = %d'
     TERMINATE = 'Terminating program execution'
 
     # MigrationJob module

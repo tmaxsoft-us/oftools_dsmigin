@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """"Module .
-    
+
 Typical usage example:
 """
 
@@ -31,7 +31,7 @@ class GDG(object):
         _base {string} -- The GDG base name.
         _generations {2D-list} -- The FTP command output, one element of the list being one line, one line corresponding to one dataset info.
         _generations_count {integer} -- The number of generations successfully processed.
-        
+
     Methods:
         __init__(record) -- Initializes all attributes of the class.
         _update_record(fields, record) -- Updates migration dataset record with parameters extracted from the FTP command output.
@@ -171,7 +171,7 @@ class GDG(object):
                                 continue
                         else:
                             Log().logger.error(LogM.FIELDS_EMPTY.value %
-                                              self._name)
+                                               self._name)
                             continue
 
                         if self._generations_count >= Context().generations:
@@ -187,12 +187,12 @@ class GDG(object):
             else:
                 raise SystemError()
 
-        except SystemError as e:
+        except SystemError as err:
             if rc == 0:
-                Log().logger.info(e)
+                Log().logger.info(err)
                 rc = -1
             elif rc == -1:
-                Log().logger.error(e)
+                Log().logger.error(err)
 
             status = 'FAILED'
             color = Color.RED.value

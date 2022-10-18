@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Set of methods useful in any module.
 
-This module gathers a set of methods that are useful in many other modules. When a method is widely 
+This module gathers a set of methods that are useful in many other modules. When a method is widely
 used in different modules, a general version of it is created and can be found here.
 
 Typical usage example:
@@ -24,7 +24,7 @@ from ..Log import Log
 
 class SingletonMeta(type):
     """This pattern restricts the instantiation of a class to one object.
-    
+
     It is a type of creational pattern and involves only one class to create methods and specified objects. It provides a global point of access to the instance created.
     """
     _instances = {}
@@ -54,7 +54,7 @@ class ShellHandler(metaclass=SingletonMeta):
         execute_tbsql_command(tbsql_query) -- Separate method to execute a Tibero SQL query.
         execute_isql_command(isql_query) -- Separate method to execute an iSQL query.
         execute_sql_query(sql_query) -- Separate method to execute a SQL query using the pyodbc module.
-        
+
         evaluate_filter(section, filter_name): Evaluates the status of the filter function passed as an argument.
 
         evaluate_env_variable(self, environment_variable) -- Evaluates if the input variable exists in the current environment.
@@ -164,7 +164,7 @@ class ShellHandler(metaclass=SingletonMeta):
 
     def execute_command(self, command, command_type='', env=None):
         """Executes shell command.
-        
+
         This method is dedicated to execute a shell command and it handles exceptions in case of failure.
 
         Arguments:
@@ -180,6 +180,8 @@ class ShellHandler(metaclass=SingletonMeta):
             SystemError -- Exception raised if the command does not exist.
             subprocess.CalledProcessError -- Exception raised if an error didn't already raised one of the previous exceptions.
         """
+        root_command = ""
+        stdout, stderr, return_code = ("", "", "")
         error = False
 
         if env is None:
@@ -197,13 +199,13 @@ class ShellHandler(metaclass=SingletonMeta):
                 stdout, stderr, return_code = self._read_command(process)
             else:
                 raise SystemError()
-        except KeyboardInterrupt:
-            raise KeyboardInterrupt()
+        except KeyboardInterrupt as err:
+            raise KeyboardInterrupt() from err
         except SystemError:
-            Log().logger.error(ErrorM.SYSTEM_SHELL % root_command)
+            Log().logger.error(ErrorM.SYSTEM_SHELL.value % root_command)
             error = True
-        except subprocess.CalledProcessError as error:
-            Log().logger.error(ErrorM.CALLED_PROCESS.value % error)
+        except subprocess.CalledProcessError as err:
+            Log().logger.error(ErrorM.CALLED_PROCESS.value % err)
             error = True
 
         if error is True:
@@ -281,7 +283,13 @@ class ShellHandler(metaclass=SingletonMeta):
         return stdout, stderr, return_code
 
     def dscreate(self, record):
-        """
+        """Run dscreate command for the dataset with appropriate parameters.
+
+        Arguments:
+            record {string} -- Migration record containing dataset info.
+
+        Returns:
+            integer -- Return code of the dscreate command.
         """
         options = '-o ' + record[MCol.DSORG.value]
         options += ' -b ' + record[MCol.BLKSIZE.value]
@@ -302,7 +310,13 @@ class ShellHandler(metaclass=SingletonMeta):
         return rc
 
     def dsdelete(self, record):
-        """
+        """Run dsdelete command for the dataset with appropriate parameters.
+
+        Arguments:
+            record {string} -- Migration record containing dataset info.
+
+        Returns:
+            integer -- Return code of the dsdelete command.
         """
         dsdelete = 'dsdelete ' + record[MCol.DSN.value]
 
@@ -312,14 +326,18 @@ class ShellHandler(metaclass=SingletonMeta):
         return rc
 
     def dsmigin(self, record, context, src='', dst='', member=''):
-        """
+        """Run dsmigin command for the dataset with appropriate parameters.
 
         Arguments:
-            record {string} -- Record length.
-            context {string} -- Context.
+            record {string} -- Migration record containing dataset info.
+            context {Context} -- Object containing all shared parameters of the
+                program.
             src {string} -- Source file.
             dst {string} -- Destination file.
-            member {string} -- Member.
+            member {string} -- Member of the dataset if DSORG is set to PO.
+
+        Returns:
+            integer -- Return code of the dsmigin command.
         """
         if src == '' and dst == '':
 
@@ -377,11 +395,13 @@ class ShellHandler(metaclass=SingletonMeta):
         return rc
 
     def idcams_define(self, record, context):
-        """
+        """Run idcams_define command for the dataset with appropriate
+        parameters.
 
         Arguments:
-            record {string} -- Record length.
-            context {string} -- Context.
+            record {string} -- Migration record containing dataset info.
+            context {Context} -- Object containing all shared parameters of the
+                program.
 
         Returns:
             integer -- Return code of the idcams define command.
@@ -434,10 +454,11 @@ class ShellHandler(metaclass=SingletonMeta):
         return rc
 
     def idcams_delete(self, record):
-        """
+        """Run idcams_delete command for the dataset with appropriate
+        parameters.
 
         Arguments:
-            record {string} -- Record length.
+            record {string} -- Migration record containing dataset info.
 
         Returns:
             integer -- Return code of the idcams delete command.

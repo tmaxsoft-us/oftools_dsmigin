@@ -23,6 +23,12 @@ from .Log import Log
 
 
 class SingletonMeta(type):
+    """This pattern restricts the instantiation of a class to one object.
+
+    It is a type of creational pattern and involves only one class to create
+    methods and specified objects. It provides a global point of access to the
+    instance created.
+    """
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -32,7 +38,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class Context(object, metaclass=SingletonMeta):
+class Context(metaclass=SingletonMeta):
     """A class used to store a set of variables and parameters across all modules for the execution of the program.
 
     Attributes:
@@ -114,7 +120,7 @@ class Context(object, metaclass=SingletonMeta):
         return self._initialization
 
     @initialization.setter
-    def init(self, initialization):
+    def initialization(self, initialization):
         """Setter method for the attribute _initialization.
         """
         if initialization is not None:
@@ -140,7 +146,7 @@ class Context(object, metaclass=SingletonMeta):
 
     @property
     def dsn_list(self):
-        """
+        """Getter method for the DSN column of the attribute _records.
         """
         return [record.columns[MCol.DSN.value] for record in self._records]
 
@@ -227,7 +233,7 @@ class Context(object, metaclass=SingletonMeta):
         """Setter method for the attribute _working_directory and all its subdirectories.
 
         Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already.
-        
+
         Raises:
             FileNotFoundError -- Exception is raised if the working directory as well as the log (sub)directory do not exist.
         """
@@ -293,28 +299,28 @@ class Context(object, metaclass=SingletonMeta):
                 # IPv4 pattern detection
                 if ip_address.count('.') == 3:
                     fields = ip_address.split('.')
-                    is_IPv4 = False
+                    is_ipv4 = False
                     for field in fields:
                         if str(int(field)) == field and 0 <= int(field) <= 255:
-                            is_IPv4 = True
+                            is_ipv4 = True
                         else:
-                            is_IPv4 = False
+                            is_ipv4 = False
                             break
-                    is_valid_ip = is_IPv4
+                    is_valid_ip = is_ipv4
                 # IPv6 pattern detection
                 if ip_address.count(':') == 7:
                     fields = ip_address.split(':')
-                    is_IPv6 = False
+                    is_ipv6 = False
                     for field in fields:
                         if len(field) > 4:
-                            is_IPv6 = False
+                            is_ipv6 = False
                             break
                         if int(field, 16) >= 0 and field[0] != '-':
-                            is_IPv6 = True
+                            is_ipv6 = True
                         else:
-                            is_IPv6 = False
+                            is_ipv6 = False
                             break
-                    is_valid_ip = is_IPv6
+                    is_valid_ip = is_ipv6
 
                 if is_valid_ip is True:
                     Log().logger.debug(LogM.IP_ADDRESS_OK.value)
@@ -485,7 +491,6 @@ class Context(object, metaclass=SingletonMeta):
         else:
             self._tag = '_' + tag
 
-    @property
     def time_stamp(self, value='default'):
         """Getter method for the attribute _time_stamp.
 
@@ -493,12 +498,14 @@ class Context(object, metaclass=SingletonMeta):
             value {string} -- Type of timestamp requested.
 
         Returns:
-            string -- the value for _time_stamp.
+            string -- the value for time_stamp.
         """
         if value == 'full':
-            return self._time_stamp.strftime('%Y%m%d_%H%M%S')
+            time_stamp = self._time_stamp.strftime('%Y%m%d_%H%M%S')
         else:
-            return self._time_stamp.strftime('%Y-%m-%d')
+            time_stamp = self._time_stamp.strftime('%Y-%m-%d')
+
+        return time_stamp
 
     def clear_all(self):
         """Clears context completely at the end of the program execution.

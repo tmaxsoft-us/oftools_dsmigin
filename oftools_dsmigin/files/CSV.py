@@ -23,11 +23,10 @@ from ..Log import Log
 
 
 class CSV(object):
-    """A class used to manipulate the CSV file , read and write tasks but also backup and other smaller features.
+    """A class used to manipulate the CSV file, read and write tasks but also backup and other smaller features.
 
     Attributes:
         _headers_definition {list} -- List to store the headers from the program definition.
-        _headers_current {list} -- List to store the current status of the headers, extracted from the CSV file.
         _columns_widths {list} -- List to store the width of each column of the CSV file.
 
         _file_path {string} -- Absolute path to the CSV file.
@@ -55,59 +54,58 @@ class CSV(object):
         self._file_name = self._file_path.rsplit('/', 1)[1]
         self._root_file_name = self._file_name.split('.')[0]
 
-        self._headers = []
         self._headers_formatted = DatasetRecord(MCol)
+        self._headers_formatted.columns = [column.name for column in MCol]
+        self._headers_formatted = self._headers_formatted.format(
+            self._column_widths)
+
         self._records_formatted = []
 
         if Context().initialization:
-            self._init_csv()
+            self._create_file()
         else:
             self._read()
+            self._backup()
 
-    def _init_csv(self):
+    def _create_file(self):
         """
         """
         Log().logger.info(LogM.CSV_INIT.value % self._file_path)
-
-        self._headers_formatted = [
-            self._format(header) for header in self._headers_definition
-        ]
         self.write()
 
     def _read(self):
         """Reads the content of the CSV file an store the data in a list.
 
-        First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list Context().records. 
-        
+        First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list Context().records.
+
         Raises:
             IndexError -- Exception is raised if there is too many elements in a given line.
             FileNotFoundError -- Exception is raised if the CSV file has not been found in the read_file execution and consequently needs to be initialized.
         """
+        line_number = 0
         Log().logger.debug(LogM.CSV_READ.value % self._file_path)
 
         try:
             data = FileHandler().read_file(self._file_path)
 
-            if data != None:
-                self._backup()
-
-                for i in range(len(data)):
-                    if i == 0:
-                        self._check_headers(data[i])
-
+            if data is not None:
+                for line_number, line in enumerate(data):
+                    if line_number == 0:
+                        self._check_headers(line)
                     else:
                         record = DatasetRecord(MCol)
-                        record.columns = data[i]
+                        record.columns = line
                         Context().records.append(record)
 
                 self._records_formatted = [
-                    record.format(self._column_widths) for record in Context().records
+                    record.format(self._column_widths)
+                    for record in Context().records
                 ]
             else:
                 raise FileNotFoundError()
 
         except IndexError:
-            Log().logger.critical(ErrorM.INDEX_ELEMENTS_LINE.value % i)
+            Log().logger.critical(ErrorM.INDEX_ELEMENTS_LINE.value % line_number)
             sys.exit(-1)
         except FileNotFoundError:
             Log().logger.critical(ErrorM.INIT.value %
@@ -140,26 +138,26 @@ class CSV(object):
 
         Arguments:
             headers {list} -- Columns headers extracted from the CSV file.
-            
+
         Raises:
             SystemError -- Exception is raised if there is typo on one of the headers.
         """
-        self._headers = [header.strip() for header in headers]
+        issue_message = ''
+        headers_definition = [column.name for column in MCol]
 
-        if len(headers) < len(self._headers_definition):
+        if len(headers) < len(headers_definition):
             if len(headers) == 1:
                 Log().logger.debug(LogM.HEADERS_DSN_ONLY.value)
 
             issue_message = 'Missing headers'
             rc = -1
 
-        elif len(headers) > len(self._headers_definition):
+        elif len(headers) > len(headers_definition):
             issue_message = 'Extra headers'
             rc = -1
 
         else:
-            header_typos = list(
-                set(self._headers) - set(self._headers_definition))
+            header_typos = list(set(headers) - set(headers_definition))
 
             if len(header_typos) == 0:
                 rc = 0
@@ -174,20 +172,13 @@ class CSV(object):
 
         if rc == -1:
             Log().logger.warning(ErrorM.HEADERS_WARNING.value % issue_message)
-            Log().logger.info(LogM.HEADERS_FILE.value %
-                              ', '.join(self._headers))
-            Log().logger.info(LogM.HEADERS_PROG.value %
-                              ', '.join(self._headers_definition))
+            Log().logger.info(LogM.HEADERS_FILE.value % ', '.join(headers))
+            Log().logger.info(LogM.HEADERS_PROG.value % ', '.join(headers_definition))
 
             Log().logger.info(LogM.HEADERS_FIX.value)
-            self._headers = self._headers_definition
             rc = 0
-
         else:
             Log().logger.debug(LogM.HEADERS_OK.value)
-
-        self._headers_formatted.columns = self._headers
-        self._headers_formatted.format(self._column_widths)
 
     def write(self, index=None):
         """Writes the dataset migration records to the CSV file.
@@ -202,19 +193,27 @@ class CSV(object):
         """
         Log().logger.debug(LogM.CSV_WRITE.value % self._file_path)
 
-        if index != None:
+        if index is not None:
             record = Context().records[index]
-            self._records_formatted[index] = record.format(self._column_widths, log=1)
+            self._records_formatted[index] = record.format(self._column_widths)
 
-        content = self._headers_formatted.columns + self._records_formatted[:].columns
+        content = [self._headers_formatted] + list(self._records_formatted)
         rc = FileHandler().write_file(self._file_path, content)
 
         return rc
 
-    @staticmethod
-    def add_record(dsn):
+    def add_records(self, args_dsn):
+        """Add manual dataset input to the storage resource.
+
+        Arguments:
+            args_dsn {string} -- Dataset name manual input if any.
         """
-        """
-        record = DatasetRecord(MCol)
-        record.columns = [dsn]
-        Context().records.append(record)
+        if args_dsn:
+            dataset_names = args_dsn.split(':')
+            for dsn in dataset_names:
+                record = DatasetRecord(MCol)
+                record.columns = [dsn]
+
+                Context().records.append(record)
+                self._records_formatted.append(
+                    record.format(self._column_widths))

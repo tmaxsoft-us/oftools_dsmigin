@@ -42,7 +42,7 @@ class MigrationJob(Job):
     """
 
     def _analyze(self, record):
-        """Assesses migration eligibility. 
+        """Assesses migration eligibility.
 
         This method double check multiple parameters in the migration dataset records to make sure that the given dataset migration can be processed without error:
             - check missing information
@@ -51,7 +51,7 @@ class MigrationJob(Job):
             - check COPYBOOK column status, to make sure that the file specified has a .cpy extension
 
         Arguments:
-            record {list} -- The given migration record containing dataset info, which needs a verification prior migration.
+            record {list} -- Migration record containing dataset info, which needs a verification prior migration.
 
         Returns:
             integer -- Return code of the method.
@@ -64,7 +64,7 @@ class MigrationJob(Job):
         rc = 0
 
         unset_list = ('', ' ')
-        skip_message = LogM.SKIP.value % (self._name, record[MCol.DSN.value])
+        skip_message = LogM.SKIP_DATASET.value % (self._name, record[MCol.DSN.value])
 
         if record[MCol.DSMIGIN.value] == 'F':
             Log().logger.debug(LogM.COL_F.value % (self._name, 'DSMIGIN'))
@@ -129,7 +129,7 @@ class MigrationJob(Job):
 
                 elif record[MCol.DSORG.value] == 'GDG':
                     Log().logger.info(skip_message +
-                                         LogM.DSORG_GDG.value % self._name)
+                                      LogM.DSORG_GDG.value % self._name)
                     record[MCol.DSMIGINDATE.value] = Context().time_stamp
                     record[MCol.DSMIGINDURATION.value] = '0'
                     record[MCol.DSMIGIN.value] = 'N'
@@ -156,7 +156,7 @@ class MigrationJob(Job):
 
         Arguments:
             record {list} -- Migration record containing dataset info.
-        
+
         Returns:
             integer -- Return code of the method.
         """
@@ -184,11 +184,11 @@ class MigrationJob(Job):
         return rc
 
     def _is_in_openframe(self, dsn):
-        """
+        """Checks if the dataset already exist in OpenFrame.
 
         Arguments:
-            dsn {string} --
-            
+            dsn {string} -- Dataset name.
+
         Returns:
             integer -- Return code of the method.
         """
@@ -229,11 +229,11 @@ class MigrationJob(Job):
 
         return rc
 
-    def _migrate_PO(self, record):
+    def _migrate_po(self, record):
         """Executes the migration using dsmigin for a PO dataset.
 
         Arguments:
-            record {list} -- The given migration record containing dataset info.
+            record {list} -- Migration record containing dataset info.
 
         Returns:
             integer -- Return code of the method.
@@ -249,7 +249,7 @@ class MigrationJob(Job):
             # Creating directory for dataset conversion
             po_conversion_dir = Context().conversion_directory + '/' + record[
                 MCol.DSN.value]
-            FileHandler().create_directory(po_conversion_dir)
+            FileHandler().create_directory(po_conversion_dir, 'po')
 
         po_dir = Context().datasets_directory + '/' + record[MCol.DSN.value]
 
@@ -276,12 +276,12 @@ class MigrationJob(Job):
 
         return rc
 
-    def _migrate_PS(self, record):
+    def _migrate_ps(self, record):
         """Executes the migration using dsmigin for a PS dataset.
 
         Arguments:
             record {list} -- Migration record containing dataset info.
-        
+
         Returns:
             integer -- Return code of the method.
         """
@@ -300,7 +300,7 @@ class MigrationJob(Job):
 
         return rc
 
-    def _migrate_VSAM(self, record):
+    def _migrate_vsam(self, record):
         """Executes the migration using idcams and dsmigin for a VSAM dataset.
 
         Arguments:
@@ -335,14 +335,15 @@ class MigrationJob(Job):
         Returns:
             integer -- Return code of the method.
         """
+        rc = 0
         start_time = time.time()
 
         if record[MCol.DSORG.value] == 'PO':
-            rc = self._migrate_PO(record)
+            rc = self._migrate_po(record)
         elif record[MCol.DSORG.value] == 'PS':
-            rc = self._migrate_PS(record)
+            rc = self._migrate_ps(record)
         elif record[MCol.DSORG.value] == 'VSAM':
-            rc = self._migrate_VSAM(record)
+            rc = self._migrate_vsam(record)
 
         elapsed_time = time.time() - start_time
 
