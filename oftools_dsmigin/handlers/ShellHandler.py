@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 """Set of methods useful in any module.
 
-This module gathers a set of methods that are useful in many other modules. When a method is widely
-used in different modules, a general version of it is created and can be found here.
+This module gathers a set of methods that are useful in many other modules.
+When a method is widely
+used in different modules, a general version of it is created and can be found
+here.
 
 Typical usage example:
-    ShellHandler().execute_command(command)
+  ShellHandler().execute_command(command)
 """
 
 # Generic/Built-in modules
@@ -17,15 +19,17 @@ import subprocess
 # Third-party modules
 
 # Owned modules
-from ..enums.MessageEnum import ErrorM, LogM
-from ..enums.MigrationEnum import MCol
+from ..enums.CSV import MCol
+from ..enums.Message import ErrorM, LogM
 from ..Log import Log
 
 
 class SingletonMeta(type):
     """This pattern restricts the instantiation of a class to one object.
 
-    It is a type of creational pattern and involves only one class to create methods and specified objects. It provides a global point of access to the instance created.
+    It is a type of creational pattern and involves only one class to create
+    methods and specified objects. It provides a global point of access to the
+    instance created.
     """
     _instances = {}
 
@@ -40,24 +44,36 @@ class ShellHandler(metaclass=SingletonMeta):
     """A class used to run shell related tasks across all modules.
 
     Attributes:
-        _env {dictionary} -- Environment variables for the execution of the program.
+        _env {dictionary} -- Environment variables for the execution of the
+        program.
 
     Methods:
-        _is_command_exist(command) -- Checks if the command exists in the environment using which.
-        _run_command(command, env) -- Runs the command, using variables from the environment if any.
-        _read_command(process) -- Decode stdout and stderr from the CompletedProcess object.
-        _log_command(stdout, stderr, return_code, command_type) -- Log output and errors if any, with different log levels.
-        execute_command(command, command_type, env=None) -- Executes shell command.
+        _is_command_exist(command) -- Checks if the command exists in the
+            environment using which.
+        _run_command(command, env) -- Runs the command, using variables from
+            the environment if any.
+        _read_command(process) -- Decode stdout and stderr from the
+            CompletedProcess object.
+        _log_command(stdout, stderr, return_code, command_type) -- Log output
+            and errors if any, with different log levels.
+        execute_command(command, command_type, env=None) -- Executes shell
+            command.
 
-        recall(dataset_name, job_name, ip_address) -- Executes FTP command to make dataset available to download.
+        recall(dataset_name, job_name, ip_address) -- Executes FTP command to
+            make dataset available to download.
 
-        execute_tbsql_command(tbsql_query) -- Separate method to execute a Tibero SQL query.
-        execute_isql_command(isql_query) -- Separate method to execute an iSQL query.
-        execute_sql_query(sql_query) -- Separate method to execute a SQL query using the pyodbc module.
+        execute_tbsql_command(tbsql_query) -- Separate method to execute a
+            Tibero SQL query.
+        execute_isql_command(isql_query) -- Separate method to execute an iSQL
+            query.
+        execute_sql_query(sql_query) -- Separate method to execute a SQL query
+            using the pyodbc module.
 
-        evaluate_filter(section, filter_name): Evaluates the status of the filter function passed as an argument.
+        evaluate_filter(section, filter_name): Evaluates the status of the
+            filter function passed as an argument.
 
-        evaluate_env_variable(self, environment_variable) -- Evaluates if the input variable exists in the current environment.
+        evaluate_env_variable(self, environment_variable) -- Evaluates if the
+            input variable exists in the current environment.
     """
 
     def __init__(self):
@@ -81,7 +97,8 @@ class ShellHandler(metaclass=SingletonMeta):
 
     @staticmethod
     def _format_command(command):
-        """Prevents bugs in dsmigin execution by escaping some special characters.
+        """Prevents bugs in dsmigin execution by escaping some special
+            characters.
 
         It currently supports escaping the following characters:
             - $
@@ -93,8 +110,8 @@ class ShellHandler(metaclass=SingletonMeta):
         Returns:
             string -- The shell command correctly formatted ready for execution.
         """
-        command = command.replace('$', '\\$')
-        command = command.replace('#', '\\#')
+        command = command.replace("$", "\\$")
+        command = command.replace("#", "\\#")
 
         return command
 
@@ -104,10 +121,12 @@ class ShellHandler(metaclass=SingletonMeta):
 
         Arguments:
             command {string} -- Shell command that needs to be executed.
-            env {dictionary} -- Environment variables currently in the shell environment.
+            env {dictionary} -- Environment variables currently in the shell
+                environment.
 
         Returns:
-            CompletedProcess object -- Object containing multiple information on the command execution.
+            CompletedProcess object -- Object containing multiple information
+                on the command execution.
         """
         process = subprocess.run(command,
                                  shell=True,
@@ -122,21 +141,23 @@ class ShellHandler(metaclass=SingletonMeta):
         """Decode stdout and stderr from the CompletedProcess object.
 
         Arguments:
-            process {CompletedProcess object} -- Object containing multiple information on the command execution.
+            process {CompletedProcess object} -- Object containing multiple
+                information on the command execution.
 
         Returns:
             tuple -- stdout, stderr, and return code of the shell command.
 
         Raises:
-            UnicodeDecodeError -- Exception raised if there is an issue decoding a certain character in stdout or stderr.
+            UnicodeDecodeError -- Exception raised if there is an issue
+                decoding a certain character in stdout or stderr.
         """
         try:
-            stdout = process.stdout.decode('utf_8')
-            stderr = process.stderr.decode('utf_8')
+            stdout = process.stdout.decode("utf_8")
+            stderr = process.stderr.decode("utf_8")
         except UnicodeDecodeError:
             Log().logger.debug(ErrorM.UNICODE.value)
-            stdout = process.stdout.decode('latin_1')
-            stderr = process.stderr.decode('latin_1')
+            stdout = process.stdout.decode("latin_1")
+            stderr = process.stderr.decode("latin_1")
 
         return_code = process.returncode
 
@@ -157,28 +178,32 @@ class ShellHandler(metaclass=SingletonMeta):
             Log().logger.error(stderr)
             Log().logger.error(LogM.RETURN_CODE.value % return_code)
 
-        elif Log().level == 'DEBUG':
+        elif Log().level == "DEBUG":
             Log().logger.debug(stdout)
             Log().logger.debug(stderr)
             Log().logger.debug(LogM.RETURN_CODE.value % return_code)
 
-    def execute_command(self, command, command_type='', env=None):
+    def execute_command(self, command, command_type="", env=None):
         """Executes shell command.
 
-        This method is dedicated to execute a shell command and it handles exceptions in case of failure.
+        This method is dedicated to execute a shell command and it handles
+        exceptions in case of failure.
 
         Arguments:
             command {string} -- Shell command that needs to be executed.
             command_type {string} -- Type of the command to execute.
-            env {dictionary} -- Environment variables currently in the shell environment.
+            env {dictionary} -- Environment variables currently in the shell
+                environment.
 
         Returns:
             tuple -- stdout, stderr, and return code of the shell command.
 
         Raises:
-            KeyboardInterrupt -- Exception raised if the user press Ctrl+C during the command shell execution.
+            KeyboardInterrupt -- Exception raised if the user press Ctrl+C
+                during the command shell execution.
             SystemError -- Exception raised if the command does not exist.
-            subprocess.CalledProcessError -- Exception raised if an error didn't already raised one of the previous exceptions.
+            subprocess.CalledProcessError -- Exception raised if an error
+                didn't already raised one of the previous exceptions.
         """
         root_command = ""
         stdout, stderr, return_code = ("", "", "")
@@ -192,7 +217,7 @@ class ShellHandler(metaclass=SingletonMeta):
             root_command = command.split()[0]
 
             if self._is_command_exist(root_command):
-                if command_type == 'migration':
+                if command_type == "migration":
                     command = self._format_command(command)
 
                 process = self._run_command(command, env)
@@ -218,7 +243,11 @@ class ShellHandler(metaclass=SingletonMeta):
     def execute_ftp_command(self, ftp_command, ip_address):
         """Dedicated method to execute an FTP command.
 
-        This method is dedicated to execute a ftp command and it handles exception in case of failure. The credentials to open the FTP session are provided through the file .netrc in the home directory. This configuration file needs to be created before the first execution of the tool.
+        This method is dedicated to execute a ftp command and it handles
+        exception in case of failure. The credentials to open the FTP session
+        are provided through the file .netrc in the home directory. This
+        configuration file needs to be created before the first execution of
+        the tool.
 
         Arguments:
             ftp_command {string} -- The FTP command that needs to be executed.
@@ -228,14 +257,14 @@ class ShellHandler(metaclass=SingletonMeta):
             tuple -- stdout, stderr, and return code of the ftp command.
         """
         #TODO Investigate usage of SFTP (more secure)
-        connect_command = 'ftp ' + ip_address + '<< EOF\n binary\ncd ..\n'
-        quit_command = '\nquit\nEOF'
+        connect_command = "ftp " + ip_address + "<< EOF\n binary\ncd ..\n"
+        quit_command = "\nquit\nEOF"
 
         shell_command = connect_command + ftp_command + quit_command
         stdout, stderr, return_code = self.execute_command(shell_command)
 
         if return_code == 0:
-            if 'not found' in stdout or 'No data sets found.' in stdout or 'cannot be processed' in stdout:
+            if "not found" in stdout or "No data sets found." in stdout or "cannot be processed" in stdout:
                 return_code = -1
 
         return stdout, stderr, return_code
@@ -252,7 +281,7 @@ class ShellHandler(metaclass=SingletonMeta):
             tuple -- stdout, stderr, and return code of the recall command.
         """
         Log().logger.info(LogM.GET_MAINFRAME.value % dataset_name)
-        ftp_ls = 'ls ' + dataset_name
+        ftp_ls = "ls " + dataset_name
 
         Log().logger.debug(LogM.COMMAND.value % (job_name, ftp_ls))
         stdout, stderr, return_code = self.execute_ftp_command(
@@ -263,7 +292,9 @@ class ShellHandler(metaclass=SingletonMeta):
     def ftp_recall(self, dataset_name, job_name, ip_address):
         """Executes FTP command to make dataset available to download.
 
-        If a dataset has VOLSER set to 'Migrated', the program executes this recall method just to open the directory containing the dataset to trigger download execution from the mainframe.
+        If a dataset has VOLSER set to "Migrated", the program executes this
+        recall method just to open the directory containing the dataset to
+        trigger download execution from the mainframe.
 
         Arguments:
             dataset_name {string} -- Dataset name.
@@ -274,7 +305,7 @@ class ShellHandler(metaclass=SingletonMeta):
             tuple -- stdout, stderr, and return code of the recall command.
         """
         Log().logger.info(LogM.RECALL.value % dataset_name)
-        ftp_recall = 'cd ' + dataset_name
+        ftp_recall = "cd " + dataset_name
 
         Log().logger.debug(LogM.COMMAND.value % (job_name, ftp_recall))
         stdout, stderr, return_code = self.execute_ftp_command(
@@ -291,23 +322,23 @@ class ShellHandler(metaclass=SingletonMeta):
         Returns:
             integer -- Return code of the dscreate command.
         """
-        options = '-o ' + record[MCol.DSORG.value]
-        options += ' -b ' + record[MCol.BLKSIZE.value]
-        options += ' -l ' + record[MCol.LRECL.value]
+        options = "-o " + record[MCol.DSORG.value]
+        options += " -b " + record[MCol.BLKSIZE.value]
+        options += " -l " + record[MCol.LRECL.value]
 
-        if 'F' in record[MCol.RECFM.value] and record[
-                MCol.LRECL.value] == '80' and record[
-                    MCol.COPYBOOK.value] == 'L_80.convcpy':
-            options += ' -f L'
+        if "F" in record[MCol.RECFM.value] and record[
+                MCol.LRECL.value] == "80" and record[
+                    MCol.COPYBOOK.value] == "L_80.convcpy":
+            options += " -f L"
         else:
-            options += ' -f ' + record[MCol.RECFM.value]
+            options += " -f " + record[MCol.RECFM.value]
 
-        dscreate = 'dscreate ' + options + ' ' + record[MCol.DSN.value]
+        dscreate = "dscreate " + options + " " + record[MCol.DSN.value]
 
-        Log().logger.info(LogM.COMMAND.value % ('migration', dscreate))
-        _, _, rc = ShellHandler().execute_command(dscreate, 'migration')
+        Log().logger.info(LogM.COMMAND.value % ("migration", dscreate))
+        _, _, status = ShellHandler().execute_command(dscreate, "migration")
 
-        return rc
+        return status
 
     def dsdelete(self, record):
         """Run dsdelete command for the dataset with appropriate parameters.
@@ -318,14 +349,14 @@ class ShellHandler(metaclass=SingletonMeta):
         Returns:
             integer -- Return code of the dsdelete command.
         """
-        dsdelete = 'dsdelete ' + record[MCol.DSN.value]
+        dsdelete = "dsdelete " + record[MCol.DSN.value]
 
-        Log().logger.info(LogM.COMMAND.value % ('migration', dsdelete))
-        _, _, rc = ShellHandler().execute_command(dsdelete, 'migration')
+        Log().logger.info(LogM.COMMAND.value % ("migration", dsdelete))
+        _, _, status = ShellHandler().execute_command(dsdelete, "migration")
 
-        return rc
+        return status
 
-    def dsmigin(self, record, context, src='', dst='', member=''):
+    def dsmigin(self, record, context, src="", dst="", member=""):
         """Run dsmigin command for the dataset with appropriate parameters.
 
         Arguments:
@@ -339,60 +370,60 @@ class ShellHandler(metaclass=SingletonMeta):
         Returns:
             integer -- Return code of the dsmigin command.
         """
-        if src == '' and dst == '':
+        if src == "" and dst == "":
 
-            src = context.datasets_directory + '/' + record[MCol.DSN.value]
+            src = context.datasets_directory + "/" + record[MCol.DSN.value]
 
-            if context.conversion == ' -C ':
-                dst = context.conversion_directory + '/' + record[
+            if context.conversion == " -C ":
+                dst = context.conversion_directory + "/" + record[
                     MCol.DSN.value]
             else:
                 dst = record[MCol.DSN.value]
 
-        options = ' -e ' + context.encoding_code
+        options = " -e " + context.encoding_code
         options += context.conversion
-        options += ' -sosi 6'
-        options += ' -z'
+        options += " -sosi 6"
+        options += " -z"
 
-        if record[MCol.COPYBOOK.value] == '':
+        if record[MCol.COPYBOOK.value] == "":
             Log().logger.info(LogM.COPYBOOK_DEFAULT.value %
                               record[MCol.DSN.value])
-            options += ' -s ' + record[MCol.DSN.value] + '.conv'
+            options += " -s " + record[MCol.DSN.value] + ".conv"
         else:
             Log().logger.info(LogM.COPYBOOK_COLUMN.value %
                               record[MCol.COPYBOOK.value])
-            options += ' -s ' + record[MCol.COPYBOOK.value].rsplit(
-                '.', 1)[0] + '.conv'
+            options += " -s " + record[MCol.COPYBOOK.value].rsplit(
+                ".", 1)[0] + ".conv"
 
-        if 'F' in record[MCol.RECFM.value] and record[
-                MCol.LRECL.value] == '80' and record[
-                    MCol.COPYBOOK.value] == 'L_80.convcpy':
-            options += ' -f L'
-        elif record[MCol.RECFM.value] == 'VBM':
-            options += ' -f VB'
+        if "F" in record[MCol.RECFM.value] and record[
+                MCol.LRECL.value] == "80" and record[
+                    MCol.COPYBOOK.value] == "L_80.convcpy":
+            options += " -f L"
+        elif record[MCol.RECFM.value] == "VBM":
+            options += " -f VB"
         else:
-            options += ' -f ' + record[MCol.RECFM.value]
+            options += " -f " + record[MCol.RECFM.value]
 
-        if record[MCol.DSORG.value] == 'PO':
-            options += ' -o PS'
-            options += ' -m ' + member
-        elif record[MCol.DSORG.value] == 'PS':
-            options += ' -o ' + record[MCol.DSORG.value]
+        if record[MCol.DSORG.value] == "PO":
+            options += " -o PS"
+            options += " -m " + member
+        elif record[MCol.DSORG.value] == "PS":
+            options += " -o " + record[MCol.DSORG.value]
 
-        if record[MCol.DSORG.value] == 'VSAM':
-            options += ' -l ' + record[MCol.MAXLRECL.value]
-            options += ' -R'
+        if record[MCol.DSORG.value] == "VSAM":
+            options += " -l " + record[MCol.MAXLRECL.value]
+            options += " -R"
         else:
-            options += ' -l ' + record[MCol.LRECL.value]
-            options += ' -b ' + record[MCol.BLKSIZE.value]
+            options += " -l " + record[MCol.LRECL.value]
+            options += " -b " + record[MCol.BLKSIZE.value]
             options += context.force
 
-        dsmigin = 'dsmigin ' + src + ' ' + dst + options
+        dsmigin = "dsmigin " + src + " " + dst + options
 
-        Log().logger.info(LogM.COMMAND.value % ('migration', dsmigin))
-        _, _, rc = ShellHandler().execute_command(dsmigin, 'migration')
+        Log().logger.info(LogM.COMMAND.value % ("migration", dsmigin))
+        _, _, status = ShellHandler().execute_command(dsmigin, "migration")
 
-        return rc
+        return status
 
     def idcams_define(self, record, context):
         """Run idcams_define command for the dataset with appropriate
@@ -408,50 +439,50 @@ class ShellHandler(metaclass=SingletonMeta):
         """
         src = record[MCol.DSN.value]
 
-        options = ' -o ' + record[MCol.VSAM.value]
-        options += ' -l ' + record[MCol.AVGLRECL.value]
-        options += ',' + record[MCol.MAXLRECL.value]
-        options += ' -k ' + record[MCol.KEYLEN.value]
-        options += ',' + record[MCol.KEYOFF.value]
-        options += ' -t CL'
+        options = " -o " + record[MCol.VSAM.value]
+        options += " -l " + record[MCol.AVGLRECL.value]
+        options += "," + record[MCol.MAXLRECL.value]
+        options += " -k " + record[MCol.KEYLEN.value]
+        options += "," + record[MCol.KEYOFF.value]
+        options += " -t CL"
 
-        if 'CATALOG' in context.enable_column_list:
+        if "CATALOG" in context.enable_column_list:
             Log().logger.info(LogM.CATALOG_COLUMN.value %
                               record[MCol.CATALOG.value])
-            options += ' -c ' + record[MCol.CATALOG.value]
+            options += " -c " + record[MCol.CATALOG.value]
         else:
             Log().logger.info(LogM.CATALOG_DEFAULT.value)
-            options += ' -c SYS1.MASTER.ICFCAT'
+            options += " -c SYS1.MASTER.ICFCAT"
 
-        if 'VOLSER' in context.enable_column_list:
-            if record[MCol.VOLSER.value] in ('Migrated', 'Pseudo', 'Tape'):
+        if "VOLSER" in context.enable_column_list:
+            if record[MCol.VOLSER.value] in ("Migrated", "Pseudo", "Tape"):
                 Log().logger.info(LogM.VOLSER_SET_DEFAULT.value %
                                   record[MCol.VOLSER.value])
-                options += ' -v DEFVOL'
+                options += " -v DEFVOL"
             else:
                 Log().logger.info(LogM.VOLSER_COLUMN.value %
                                   record[MCol.VOLSER.value])
-                options += ' -v ' + record[MCol.VOLSER.value]
+                options += " -v " + record[MCol.VOLSER.value]
         else:
             Log().logger.info(LogM.VOLSER_DEFAULT.value)
-            options += ' -v DEFVOL'
+            options += " -v DEFVOL"
 
-        idcams_define = 'idcams define' + ' -n ' + src + options
+        idcams_define = "idcams define" + " -n " + src + options
 
-        Log().logger.info(LogM.COMMAND.value % ('migration', idcams_define))
-        _, _, rc = ShellHandler().execute_command(idcams_define, 'migration')
+        Log().logger.info(LogM.COMMAND.value % ("migration", idcams_define))
+        _, _, status = ShellHandler().execute_command(idcams_define,
+                                                      "migration")
 
         # Retry with -O option if failed
-        if rc != 0:
-            options += ' -O'
-            idcams_define = 'idcams define' + ' -n ' + src + options
+        if status != 0:
+            options += " -O"
+            idcams_define = "idcams define" + " -n " + src + options
 
-            Log().logger.info(LogM.COMMAND.value %
-                               ('migration', idcams_define))
-            _, _, rc = ShellHandler().execute_command(idcams_define,
-                                                      'migration')
+            Log().logger.info(LogM.COMMAND.value % ("migration", idcams_define))
+            _, _, status = ShellHandler().execute_command(
+                idcams_define, "migration")
 
-        return rc
+        return status
 
     def idcams_delete(self, record):
         """Run idcams_delete command for the dataset with appropriate
@@ -463,12 +494,13 @@ class ShellHandler(metaclass=SingletonMeta):
         Returns:
             integer -- Return code of the idcams delete command.
         """
-        options = ' -t CL'
+        options = " -t CL"
 
-        idcams_delete = 'idcams delete ' + ' -n ' + record[
+        idcams_delete = "idcams delete " + " -n " + record[
             MCol.DSN.value] + options
 
-        Log().logger.info(LogM.COMMAND.value % ('migration', idcams_delete))
-        _, _, rc = ShellHandler().execute_command(idcams_delete, 'migration')
+        Log().logger.info(LogM.COMMAND.value % ("migration", idcams_delete))
+        _, _, status = ShellHandler().execute_command(idcams_delete,
+                                                      "migration")
 
-        return rc
+        return status

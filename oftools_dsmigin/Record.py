@@ -9,16 +9,18 @@ import re
 # Third-party modules
 
 # Owned modules
-from .enums.MigrationEnum import MCol
-from .enums.MessageEnum import LogM
+from .enums.CSV import MCol
+from .enums.Message import LogM
 from .Log import Log
 
 
-class DatasetRecord():
-    """A class used just as a dataset record object, with one attribute being the columns.
+class Record():
+    """A class used just as a dataset record object, with one attribute being
+    the columns.
 
     Attributes:
-        _columns {list} -- Record columns, filled by the data coming from the CSV file.
+        _columns {list} -- Record columns, filled by the data coming from the
+            CSV file.
 
     Methods:
         __init__(columns) -- Initializes the only attribute of the class.
@@ -27,7 +29,7 @@ class DatasetRecord():
     def __init__(self, columns):
         """Initializes the only attribute of the class.
         """
-        self._columns = ['' for _ in range(len(columns))]
+        self._columns = ["" for _ in range(len(columns))]
 
     @property
     def columns(self):
@@ -45,7 +47,8 @@ class DatasetRecord():
     def format(self, widths):
         """Formats CSV record adding trailing spaces to each columns.
 
-        To ease reading and analyzing the file the columns are properly aligned based on an enumeration listing the width for each column.
+        To ease reading and analyzing the file the columns are properly aligned
+        based on an enumeration listing the width for each column.
 
         Arguments:
             record {list} -- CSV record to be formatted.

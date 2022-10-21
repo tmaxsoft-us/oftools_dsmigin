@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This module handles the enumeration of all the column names for the migration CSV file, as well as the width of each column.
+"""Enumerate columns used in the listcat and migration CSV files, as
+well as the width of each column.
 
 Typical usage example:
-    records[Col.DSN.name] = 'DSN'
-    records[Col.DSN.value] = 0
+  records[Col.DSN.name] = "DSN"
+  records[Col.DSN.value] = 0
 """
 
 # Generic/Built-in modules
@@ -17,8 +18,23 @@ import aenum
 
 
 @enum.unique
+class LCol(enum.Enum):
+    """List column names and indexes in the listcat CSV file.
+    """
+    DSN = 0
+    RECFM = 1
+    VSAM = 2
+    KEYOFF = 3
+    KEYLEN = 4
+    MAXLRECL = 5
+    AVGLRECL = 6
+    CISIZE = 7
+    CATALOG = 8
+
+
+@enum.unique
 class MCol(enum.Enum):
-    """Just an enumeration of all the columns we need in the migration CSV file.
+    """List column names and indexes used in the migration CSV file.
     """
     DSN = 0
     COPYBOOK = 1
@@ -46,7 +62,7 @@ class MCol(enum.Enum):
 
 
 class Width(aenum.Enum):
-    """Just an enumeration of all the column widths we need in the migration CSV file.
+    """List column widths.
     """
     _settings_ = aenum.NoAlias
 

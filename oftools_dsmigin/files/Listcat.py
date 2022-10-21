@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Module that contains all functions required for an update of the CSV file for VSAM datasets.
+"""Run all tasks to update the CSV file, specifically VSAM datasets.
 
 Typical usage example:
-    listcat = Listcat()
-    listcat.run(records)
+  listcat = Listcat()
+  listcat.run(records)
 """
 
 # Generic/Built-in modules
@@ -14,45 +14,44 @@ import collections
 
 # Owned modules
 from ..Context import Context
-from ..enums.MessageEnum import Color, LogM
-from ..enums.ListcatEnum import LCol
+from ..enums.Message import Color, LogM
+from ..enums.CSV import LCol
 from ..handlers.FileHandler import FileHandler
 from ..Log import Log
+from ..Record import Record
 
 
-class Listcat(object):
-    """A class to update certain fields in the CSV file regarding the VSAM datasets using the result of the command listcat executed in the mainframe.
+class Listcat():
+    """Update fields in the CSV file regarding the VSAM datasets using the
+    result of the command listcat executed in the mainframe.
 
     Attributes:
-        _headers {list} -- List to store the headers from the program definition on the listcat CSV file.
-        _file_path {string} -- Absolute path to the listcat file, either TXT or CSV.
-        _data_txt {} -- List with the data extracted from the listcat text file.
-        _data {} -- Dictionary with the listcat datasets info.
+        _headers {list} -- List to store the headers from the program
+            definition of the listcat CSV file.
+        _file_path {string} -- Absolute path to the listcat CSV file.
 
     Methods:
-        __init__() -- Initializes all attributes of the class.
-        _read_txt() -- Reads the listcat text file and store the output in a list.
-        _get_data_txt() -- Analyzes the data extracted from the listcat text file.
-        _write_csv() -- Writes the dataset listcat records changes to the CSV file.
-        generate_csv() -- Main method to convert the listcat TXT file to a CSV file.
-        read_csv() -- Reads the content of the listcat CSV file and store the result in a list.
+        __init__() -- Initialize the class with its attributes.
+        _read() -- Read the listcat CSV file and store the output in a
+            dictionary.
+        _analyze() -- Analyze data extracted from the listcat text file.
+        _write() -- Write listcat records to the CSV file.
+        _generate(file_path_txt) -- Convert listcat text file to a CSV file.
     """
 
-    def __init__(self, txt_file_path):
+    def __init__(self, file_path_txt):
         """Initializes the class with all the attributes.
         """
         self._headers = [column.name for column in LCol]
         self._file_path = Context().listcat_directory + '/listcat.csv'
 
-        if txt_file_path:
-            self._generate(txt_file_path)
+        if file_path_txt:
+            self._generate(file_path_txt)
 
         self._read()
 
     def _read(self):
-        """Reads the content of the listcat CSV file and store the result in a list.
-
-        One listcat file can contains the info of one or multiple datasets.
+        """Read the listcat CSV file and store the result in a dictionary.
         """
         Log().logger.debug(LogM.LISTCAT_READ.value % self._file_path)
 
@@ -68,21 +67,24 @@ class Listcat(object):
             Log().logger.warning(LogM.LISTCAT_SKIP.value % self._file_path)
 
     def _analyze(self, data_list):
-        """Analyzes the data extracted from the listcat text file.
+        """Analyze data extracted from the listcat text file.
 
         Returns:
             integer -- Return code of the method.
         """
-        rc = 0
+        status = 0
         flag = 0
         lines = data_list.splitlines()
         data_dict = collections.OrderedDict()
+
+        listcat_record = Record(LCol)
+        record = listcat_record.columns
 
         for line in lines:
 
             if 'LISTING FROM CATALOG' in line:
                 fields = line.split(' -- ')
-                catalog = fields[1].strip()
+                record[LCol.CATALOG.value] = fields[1].strip()
 
             if flag == 0 and 'DATA -------' in line:
                 flag = 1
@@ -93,64 +95,59 @@ class Listcat(object):
                     Log().logger.debug(LogM.DATASET_IDENTIFIED.value %
                                        fields[1])
                     flag = 2
-                    dsn = fields[1]
-                    recfm = 'VB'
-                    vsam = ''
-                    keyoff, keylen = '', ''
-                    maxlrecl, avglrecl = '', ''
-                    cisize = ''
+                    record[LCol.DSN.value] = fields[1]
+                    record[LCol.RECFM.value] = 'VB'
 
             elif flag == 2 and 'ATTRIBUTES' in line:
-                # Log().logger.debug('Attributes section found')
                 flag = 3
 
             elif flag == 3 and 'STATISTICS' not in line:
-                # Log().logger.debug('Analyzing attributes')
                 dataset_attributes = line.replace('-', '')
                 dataset_attributes = dataset_attributes.split()
 
                 for attr in dataset_attributes:
                     if attr.startswith('RKP'):
-                        keyoff = attr.replace('RKP', '')
+                        record[LCol.KEYOFF.value] = attr.replace('RKP', '')
                     elif attr.startswith('KEYLEN'):
-                        keylen = attr.replace('KEYLEN', '')
+                        record[LCol.KEYLEN.value] = attr.replace('KEYLEN', '')
                     elif attr.startswith('MAXLRECL'):
-                        maxlrecl = attr.replace('MAXLRECL', '')
+                        record[LCol.MAXLRECL.value] = attr.replace(
+                            'MAXLRECL', '')
                     elif attr.startswith('AVGLRECL'):
-                        avglrecl = attr.replace('AVGLRECL', '')
+                        record[LCol.AVGLRECL.value] = attr.replace(
+                            'AVGLRECL', '')
                     elif attr.startswith('CISIZE'):
-                        cisize = attr.replace('CISIZE', '')
+                        record[LCol.CISIZE.value] = attr.replace('CISIZE', '')
                     elif attr.startswith('INDEXED'):
-                        vsam = 'KS'
+                        record[LCol.VSAM.value] = 'KS'
                     elif attr.startswith('NONINDEXED'):
-                        vsam = 'ES'
+                        record[LCol.VSAM.value] = 'ES'
                     elif attr.startswith('NUMBERED'):
-                        vsam = 'RR'
+                        record[LCol.VSAM.value] = 'RR'
 
             # Re-initialization for the next dataset
             elif flag == 3 and 'STATISTICS' in line:
-                data_dict[dsn] = [
-                    dsn, recfm, vsam, keyoff, keylen, maxlrecl, avglrecl,
-                    cisize, catalog
-                ]
+                data_dict[record[LCol.DSN.value]] = record
+                record = ['' for _ in range(len(LCol))]
                 flag = 0
 
         #TODO No way to fail this at the moment
-        if rc == 0:
-            status = 'SUCCESS'
+        if status == 0:
+            result = 'SUCCESS'
             color = Color.GREEN.value
         else:
-            status = 'FAILED'
+            result = 'FAILED'
             color = Color.RED.value
 
-        Log().logger.info(color + LogM.LISTCAT_GEN_STATUS.value % status)
+        Log().logger.info(color + LogM.LISTCAT_GEN_STATUS.value % result)
 
         return data_dict
 
     def _write(self, data):
-        """Writes the dataset listcat records changes to the CSV file.
+        """Write listcat records to the CSV file.
 
-        Opens the CSV file, writes the headers in the first row and then writes the data from the records.
+        Opens the CSV file, writes the headers in the first row and then writes
+        the data from the records.
 
         Returns:
             integer -- Return code of the method.
@@ -159,19 +156,21 @@ class Listcat(object):
 
         # Writing column headers to CSV file
         if FileHandler().check_path_exists(self._file_path) is False:
-            rc = FileHandler().write_file(self._file_path, [self._headers])
+            status = FileHandler().write_file(self._file_path, [self._headers])
 
-            if rc != 0:
-                return rc
+            if status != 0:
+                return status
 
         # Writing records to CSV file
         content = data.values()
-        rc = FileHandler().write_file(self._file_path, content, 'a')
+        status = FileHandler().write_file(self._file_path, content, 'a')
 
-        return rc
+        return status
 
     def _generate(self, file_path_txt):
-        """Main method to convert the listcat TXT file to a CSV file.
+        """Convert listcat text file to a CSV file.
+
+        One listcat text file can contains the info of one or multiple datasets.
         """
         Log().logger.debug(LogM.START_LISTCAT_GEN.value)
 

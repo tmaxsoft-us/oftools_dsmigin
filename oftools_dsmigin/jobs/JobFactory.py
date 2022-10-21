@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This module retrieves the parameters entered by the user and creates the
-corresponding job.
+"""Create jobs.
 
 Typical usage example:
   job_factory = JobFactory()
@@ -19,17 +18,16 @@ from .MigrationJob import MigrationJob
 
 
 class JobFactory():
-    """A class used to create all the jobs required with the given input
-    parameters.
+    """Create jobs.
 
     This class is the core of the Factory design pattern.
 
     Methods:
-        create(job_name) -- Creates the job according to the input parameter.
+        create(job_name) -- Create the job according to the input parameter.
     """
 
     def create(self, job_name):
-        """Creates the job according to the input parameter.
+        """Create the job according to the input parameter.
 
         Arguments:
             job_name {string} -- Name of the job.

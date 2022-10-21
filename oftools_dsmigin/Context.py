@@ -15,8 +15,8 @@ import sys
 # Third-party modules
 
 # Owned modules
-from .enums.MessageEnum import ErrorM, LogM
-from .enums.MigrationEnum import MCol
+from .enums.CSV import MCol
+from .enums.Message import ErrorM, LogM
 from .handlers.FileHandler import FileHandler
 from .handlers.ShellHandler import ShellHandler
 from .Log import Log
@@ -39,26 +39,38 @@ class SingletonMeta(type):
 
 
 class Context(metaclass=SingletonMeta):
-    """A class used to store a set of variables and parameters across all modules for the execution of the program.
+    """A class used to store a set of variables and parameters across all
+    modules for the execution of the program.
 
     Attributes:
         _init {boolean} --
-        _number {integer} -- Number of datasets to process in the current execution of oftools_dsmigin.
+        _number {integer} -- Number of datasets to process in the current
+            execution of oftools_dsmigin.
 
-        _conversion_directory {string} -- Absolute path of the conversion subdirectory. It contains all converted datasets that are cleared after each migration (useless files).
-        _copybooks_directory {string} -- Absolute path of the copybooks subdirectory.
+        _conversion_directory {string} -- Absolute path of the conversion
+            subdirectory. It contains all converted datasets that are cleared
+            after each migration (useless files).
+        _copybooks_directory {string} -- Absolute path of the copybooks
+            subdirectory.
         _csv_backups_directory {string} --
-        _datasets_directory {string} -- Absolute path of the datasets subdirectory. It contains all the downloaded datasets.
+        _datasets_directory {string} -- Absolute path of the datasets
+            subdirectory. It contains all the downloaded datasets.
         _listcat_directory {string} --
-        _log_directory {string} -- Absolute path of the log subdirectory. It contains the logs of each execution of oftools_dsmigin.
+        _log_directory {string} -- Absolute path of the log subdirectory. It
+            contains the logs of each execution of oftools_dsmigin.
         _working_directory {string} -- Absolute path of the working directory.
 
-        _conversion {string} -- If the user specifies the conversion flag, it changes from '' to '-C' to perform conversion only migration type.
+        _conversion {string} -- If the user specifies the conversion flag, it
+            changes from "" to "-C" to perform conversion only migration type.
         _enable_column_list {list} --
-        _encoding_code {string} -- It specifies to what ASCII characters the EBCDIC two-byte data should be converted.
-        _force {string} -- If the user specifies the force flag, it changes from '' to '-F' to perform forced migration, which means erasing the dataset if already migrated in OpenFrame.
+        _encoding_code {string} -- It specifies to what ASCII characters the
+            EBCDIC two-byte data should be converted.
+        _force {string} -- If the user specifies the force flag, it changes
+            from "" to "-F" to perform forced migration, which means erasing
+            the dataset if already migrated in OpenFrame.
         _generations {integer} --
-        _ip_address {string} -- The ip address of the mainframe to connect to for the Listcat and FTP executions.
+        _ip_address {string} -- The ip address of the mainframe to connect to
+            for the Listcat and FTP executions.
         _listcat {Listcat object} --
         _prefix {string} --
 
@@ -66,11 +78,13 @@ class Context(metaclass=SingletonMeta):
 
         _timestamp {Datetime} -- Date and time for ...
 
-        _init_pwd {string} -- Absolute path of the initial directory where the command has been executed.
+        _init_pwd {string} -- Absolute path of the initial directory where the
+            command has been executed.
 
     Methods:
         __init__() -- Initializes all attributes of the class.
-        clear_all() -- Clears context completely at the end of the program execution.
+        clear_all() -- Clears context completely at the end of the program
+            execution.
     """
 
     def __init__(self):
@@ -82,27 +96,27 @@ class Context(metaclass=SingletonMeta):
         self._records = []
 
         # Directories
-        self._conversion_directory = ''
-        self._copybooks_directory = ''
-        self._csv_backups_directory = ''
-        self._datasets_directory = ''
-        self._listcat_directory = ''
-        self._log_directory = ''
-        self._working_directory = ''
+        self._conversion_directory = ""
+        self._copybooks_directory = ""
+        self._csv_backups_directory = ""
+        self._datasets_directory = ""
+        self._listcat_directory = ""
+        self._log_directory = ""
+        self._working_directory = ""
 
         # Input parameters - different jobs
-        self._conversion = ''
+        self._conversion = ""
         self._enable_column_list = []
-        self._encoding_code = ''
-        self._force = ''
+        self._encoding_code = ""
+        self._force = ""
         self._generations = 0
-        self._ip_address = ''
+        self._ip_address = ""
         self._listcat_records = {}
-        self._prefix = ''
+        self._prefix = ""
         self._test = False
 
         # Tag
-        self._tag = ''
+        self._tag = ""
 
         # Timestamp
         self._time_stamp = datetime.datetime.now()
@@ -164,7 +178,7 @@ class Context(metaclass=SingletonMeta):
                 else:
                     raise SystemError()
         except SystemError:
-            option = '-n, --number'
+            option = "-n, --number"
             Log().logger.critical(ErrorM.SIGN.value % (option, number))
             sys.exit(-1)
 
@@ -230,22 +244,26 @@ class Context(metaclass=SingletonMeta):
 
     @working_directory.setter
     def working_directory(self, path):
-        """Setter method for the attribute _working_directory and all its subdirectories.
+        """Setter method for the attribute _working_directory and all its
+        subdirectories.
 
-        Only if the input work directory has been correctly specified, it creates the absolute path to this directory. It also creates the working directory if it does not exist already.
+        Only if the input work directory has been correctly specified, it
+        creates the absolute path to this directory. It also creates the
+        working directory if it does not exist already.
 
         Raises:
-            FileNotFoundError -- Exception is raised if the working directory as well as the log (sub)directory do not exist.
+            FileNotFoundError -- Exception is raised if the working directory
+            as well as the log (sub)directory do not exist.
         """
         working_directory = os.path.expandvars(path)
 
         self._working_directory = os.path.abspath(working_directory)
-        self._conversion_directory = self._working_directory + '/conversion'
-        self._copybooks_directory = self._working_directory + '/copybooks'
-        self._csv_backups_directory = self._working_directory + '/csv_backups'
-        self._datasets_directory = self._working_directory + '/datasets'
-        self._listcat_directory = self._working_directory + '/listcat'
-        self._log_directory = self._working_directory + '/log'
+        self._conversion_directory = self._working_directory + "/conversion"
+        self._copybooks_directory = self._working_directory + "/copybooks"
+        self._csv_backups_directory = self._working_directory + "/csv_backups"
+        self._datasets_directory = self._working_directory + "/datasets"
+        self._listcat_directory = self._working_directory + "/listcat"
+        self._log_directory = self._working_directory + "/log"
 
         if self._initialization:
             Log().logger.info(LogM.INIT_WORKING_DIR.value)
@@ -263,11 +281,10 @@ class Context(metaclass=SingletonMeta):
                     self._working_directory) is False or FileHandler(
                     ).is_a_directory(self._log_directory) is False:
                 raise FileNotFoundError()
-            else:
-                Log().logger.debug(LogM.WORKING_DIR_OK.value)
+            Log().logger.debug(LogM.WORKING_DIR_OK.value)
         except FileNotFoundError:
             Log().logger.critical(ErrorM.WORKING_DIR.value % path)
-            Log().logger.critical(ErrorM.INIT.value % 'working directory')
+            Log().logger.critical(ErrorM.INIT.value % "working directory")
             sys.exit(-1)
 
     @property
@@ -283,13 +300,16 @@ class Context(metaclass=SingletonMeta):
     def ip_address(self, ip_address):
         """Setter method for the attribute _ip_address.
 
-        It checks if the format of the input IP address is correct. This method is able to detect both IPv4 and IPv6 addresses. It is a really simple pattern analysis.
+        It checks if the format of the input IP address is correct. This method
+        is able to detect both IPv4 and IPv6 addresses. It is a really simple
+        pattern analysis.
 
         Arguments:
             ip_address {string} -- IP address used as as a parameter.
 
         Raises:
-            SystemError -- Exception raised if the IP address specified does not respect a correct IPv4 or IPv6 format.
+            SystemError -- Exception raised if the IP address specified does
+            not respect a correct IPv4 or IPv6 format.
         """
         try:
             if ip_address is not None:
@@ -297,8 +317,8 @@ class Context(metaclass=SingletonMeta):
                 is_valid_ip = False
 
                 # IPv4 pattern detection
-                if ip_address.count('.') == 3:
-                    fields = ip_address.split('.')
+                if ip_address.count(".") == 3:
+                    fields = ip_address.split(".")
                     is_ipv4 = False
                     for field in fields:
                         if str(int(field)) == field and 0 <= int(field) <= 255:
@@ -308,14 +328,14 @@ class Context(metaclass=SingletonMeta):
                             break
                     is_valid_ip = is_ipv4
                 # IPv6 pattern detection
-                if ip_address.count(':') == 7:
-                    fields = ip_address.split(':')
+                if ip_address.count(":") == 7:
+                    fields = ip_address.split(":")
                     is_ipv6 = False
                     for field in fields:
                         if len(field) > 4:
                             is_ipv6 = False
                             break
-                        if int(field, 16) >= 0 and field[0] != '-':
+                        if int(field, 16) >= 0 and field[0] != "-":
                             is_ipv6 = True
                         else:
                             is_ipv6 = False
@@ -369,7 +389,7 @@ class Context(metaclass=SingletonMeta):
                 else:
                     raise SystemError()
         except SystemError:
-            option = '-g, --generations'
+            option = "-g, --generations"
             Log().logger.critical(ErrorM.SIGN.value % (option, generations))
             sys.exit(-1)
 
@@ -387,7 +407,7 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _prefix.
         """
         if prefix is not None:
-            self._prefix = prefix + '.'
+            self._prefix = prefix + "."
 
     @property
     def enable_column_list(self):
@@ -403,7 +423,7 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _enable_column_list.
         """
         if column_names is not None:
-            columns = column_names.split(':')
+            columns = column_names.split(":")
             for column in columns:
                 self._enable_column_list.append(column)
 
@@ -421,7 +441,7 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _conversion.
         """
         if conversion is True:
-            self._conversion = ' -C '
+            self._conversion = " -C "
 
     @property
     def test(self):
@@ -437,7 +457,7 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _test.
         """
         if test is True:
-            self._conversion = ' -C '
+            self._conversion = " -C "
             self._test = test
 
     @property
@@ -470,7 +490,7 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _force.
         """
         if force is True:
-            self._force = ' -F '
+            self._force = " -F "
 
     @property
     def tag(self):
@@ -486,12 +506,12 @@ class Context(metaclass=SingletonMeta):
         """Setter method for the attribute _tag.
         """
         if tag is None:
-            self._tag, _, _ = ShellHandler().execute_command('logname')
-            self._tag = '_' + self._tag.replace('\n', '')
+            self._tag, _, _ = ShellHandler().execute_command("logname")
+            self._tag = "_" + self._tag.replace("\n", "")
         else:
-            self._tag = '_' + tag
+            self._tag = "_" + tag
 
-    def time_stamp(self, value='default'):
+    def time_stamp(self, value="default"):
         """Getter method for the attribute _time_stamp.
 
         Arguments:
@@ -500,10 +520,10 @@ class Context(metaclass=SingletonMeta):
         Returns:
             string -- the value for time_stamp.
         """
-        if value == 'full':
-            time_stamp = self._time_stamp.strftime('%Y%m%d_%H%M%S')
+        if value == "full":
+            time_stamp = self._time_stamp.strftime("%Y%m%d_%H%M%S")
         else:
-            time_stamp = self._time_stamp.strftime('%Y-%m-%d')
+            time_stamp = self._time_stamp.strftime("%Y-%m-%d")
 
         return time_stamp
 

@@ -8,7 +8,6 @@
 import argparse
 import signal
 import sys
-import traceback
 # import logging
 
 # Third-party modules
@@ -16,7 +15,7 @@ import traceback
 # Owned modules
 from . import __version__
 from .Context import Context
-from .enums.MessageEnum import ErrorM, LogM
+from .enums.Message import ErrorM, LogM
 from .files.CSV import CSV
 from .files.Listcat import Listcat
 from .handlers.FileHandler import FileHandler
@@ -35,12 +34,15 @@ def main():
 
 
 class Main():
-    """Main class containing the methods for parsing the command arguments and running OpenFrame Tools Dataset Migration.
+    """Main class containing the methods for parsing the command arguments and
+    running OpenFrame Tools Dataset Migration.
 
     Methods:
         _parse_arg() -- Parses command-line options.
-        _signal_handler(signum, frame) -- Handles signal SIGQUIT for the program execution.
-        _create_jobs(args, csv) -- Creates job depending on the input parameters.
+        _signal_handler(signum, frame) -- Handles signal SIGQUIT for the
+            program execution.
+        _create_jobs(args, csv) -- Creates job depending on the input
+            parameters.
         run() -- Perform all the steps to execute jobs of oftools_dsmigin.
     """
 
@@ -48,232 +50,237 @@ class Main():
     def _parse_arg():
         """Parses command-line options.
 
-        The program defines what arguments it requires, and argparse will figure out how to parse
-        those out of sys.argv. The argparse module also automatically generates help, usage
-        messages and issues errors when users give the program invalid arguments.
+        The program defines what arguments it requires, and argparse will
+        figure out how to parse those out of sys.argv. The argparse module also
+        automatically generates help, usage messages and issues errors when
+        users give the program invalid arguments.
 
         Returns:
             args {ArgumentParser} -- Program input arguments.
         """
         parser = argparse.ArgumentParser(
             add_help=False,
-            description='OpenFrame Tools Dataset Migration',
+            description="OpenFrame Tools Dataset Migration",
             formatter_class=argparse.RawTextHelpFormatter)
 
         parser._action_groups.pop()
-        required = parser.add_argument_group('Required arguments')
-        jobs = parser.add_argument_group('Jobs arguments')
-        optional = parser.add_argument_group('Optional arguments')
-        others = parser.add_argument_group('Help & version')
+        required = parser.add_argument_group("Required arguments")
+        jobs = parser.add_argument_group("Jobs arguments")
+        optional = parser.add_argument_group("Optional arguments")
+        others = parser.add_argument_group("Help & version")
 
         # Required arguments
         required.add_argument(
-            '-c',
-            '--csv',
-            action='store',  # optional because default action is 'store'
-            dest='csv',
+            "-c",
+            "--csv",
+            action="store",  # optional because default action is "store"
+            dest="csv",
             help=
-            'CSV file name, contains the datasets list and their parameters',
-            metavar='FILE',
+            "CSV file name, contains the datasets list and their parameters",
+            metavar="FILE",
             required=True,
             type=str)
 
-        required.add_argument('-w',
-                              '--working-directory',
-                              action='store',
-                              dest='working_directory',
-                              help='working directory name',
-                              metavar='DIRECTORY',
+        required.add_argument("-w",
+                              "--working-directory",
+                              action="store",
+                              dest="working_directory",
+                              help="working directory name",
+                              metavar="DIRECTORY",
                               required=True,
                               type=str)
 
         # Jobs arguments
         jobs.add_argument(
-            '-L',
-            '--listcat',
-            action='store_true',
-            dest='listcat',
+            "-L",
+            "--listcat",
+            action="store_true",
+            dest="listcat",
             help=
-            'flag used to trigger listcat execution, retrieve dataset info from Mainframe as well as VSAM dataset info from a listcat file',
+            "flag used to trigger listcat execution, retrieve dataset info from Mainframe as well as VSAM dataset info from a listcat file",
             required=False)
 
         jobs.add_argument(
-            '-F',
-            '--ftp',
-            action='store_true',
-            dest='ftp',
+            "-F",
+            "--ftp",
+            action="store_true",
+            dest="ftp",
             help=
-            'flag used to trigger FTP execution, download datasets from Mainframe',
+            "flag used to trigger FTP execution, download datasets from Mainframe",
             required=False)
 
         jobs.add_argument(
-            '-M',
-            '--migration',
-            action='store_true',
-            dest='migration',
+            "-M",
+            "--migration",
+            action="store_true",
+            dest="migration",
             help=
-            'flag used to trigger dsmigin, execute dataset conversion and generation in the OpenFrame environment',
+            "flag used to trigger dsmigin, execute dataset conversion and generation in the OpenFrame environment",
             required=False)
 
         # Optional arguments
-        optional.add_argument('--clear',
-                              action='store_true',
-                              dest='clear',
+        optional.add_argument("--clear",
+                              action="store_true",
+                              dest="clear",
                               help=argparse.SUPPRESS,
                               required=False)
 
         optional.add_argument(
-            '-d',
-            '--dsn',
-            action='store',  # optional because default action is 'store'
-            dest='dsn',
+            "-d",
+            "--dsn",
+            action="store",  # optional because default action is "store"
+            dest="dsn",
             help=
-            'colon-separated list of datasets to automatically add them to the CSV file',
-            metavar='FILE',
+            "colon-separated list of datasets to automatically add them to the CSV file",
+            metavar="FILE",
             required=False,
             type=str)
 
         optional.add_argument(
-            '-C',
-            '--conversion',
-            action='store_true',
-            dest='conversion',
-            help='flag used to execute conversion only in dataset migration',
+            "-C",
+            "--conversion",
+            action="store_true",
+            dest="conversion",
+            help="flag used to execute conversion only in dataset migration",
             required=False)
 
         optional.add_argument(
-            '-e',
-            '--encoding-code',
-            action='store',
-            choices=['US'],
-            default='US',
-            dest='encoding_code',
+            "-e",
+            "--encoding-code",
+            action="store",
+            choices=["US"],
+            default="US",
+            dest="encoding_code",
             help=
-            'encoding code for dataset migration, potential values:\n- US (default)',
-            metavar='CODE',
+            "encoding code for dataset migration, potential values:\n- US (default)",
+            metavar="CODE",
             required=False,
             type=str)
 
         optional.add_argument(
-            '--enable-column',
-            action='store',
-            dest='enable_column_list',
+            "--enable-column",
+            action="store",
+            dest="enable_column_list",
             help=
-            'enable CSV columns instead of the default value, colon-separated. Supported columns:\n- CATALOG (default is SYS1.MASTER.ICFCAT)\n- VOLSER (default is DEFVOL)',
-            metavar='COLUMN',
+            "enable CSV columns instead of the default value, colon-separated. Supported columns:\n- CATALOG (default is SYS1.MASTER.ICFCAT)\n- VOLSER (default is DEFVOL)",
+            metavar="COLUMN",
             required=False,
             type=str)
 
-        optional.add_argument('-f',
-                              '--force',
-                              action='store_true',
-                              dest='force',
-                              help='flag used to force dataset migration',
+        optional.add_argument("-f",
+                              "--force",
+                              action="store_true",
+                              dest="force",
+                              help="flag used to force dataset migration",
                               required=False)
 
         optional.add_argument(
-            '-g',
-            '--generations',
-            action='store',
-            dest='generations',
+            "-g",
+            "--generations",
+            action="store",
+            dest="generations",
             help=
-            'number of generations to be processed specifically for GDG datasets',
-            metavar='GENERATIONS',
+            "number of generations to be processed specifically for GDG datasets",
+            metavar="GENERATIONS",
             required=False,
             type=int)
 
         optional.add_argument(
-            '-i',
-            '--ip-address',
-            action='store',
-            dest='ip_address',
+            "-i",
+            "--ip-address",
+            action="store",
+            dest="ip_address",
             help=
-            'ip address required for any command that involves a connection to Mainframe (listcat and ftp)',
-            metavar='ADDRESS',
+            "ip address required for any command that involves a connection to Mainframe (listcat and ftp)",
+            metavar="ADDRESS",
             required=False,
             type=str)
 
         optional.add_argument(
-            '--init',
-            action='store_true',
-            dest='initialization',
+            "--init",
+            action="store_true",
+            dest="initialization",
             help=
-            'flag used to initialize the CSV file and the working directory specified',
+            "flag used to initialize the CSV file and the working directory specified",
             required=False)
 
         optional.add_argument(
-            '--listcat-gen',
-            action='store',
-            dest='listcat_gen',
+            "--listcat-gen",
+            action="store",
+            dest="listcat_gen",
             help=
-            'text file name used to append datasets records to a CSV file for listcat information',
-            metavar='FILE',
+            "text file name used to append datasets records to a CSV file for listcat information",
+            metavar="FILE",
             required=False,
             type=str)
 
         optional.add_argument(
-            '-l',
-            '--log-level',
-            action='store',
-            choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-            default='INFO',
-            dest='log_level',
+            "-l",
+            "--log-level",
+            action="store",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            default="INFO",
+            dest="log_level",
             help=
-            'log level, potential values:\n- DEBUG\n- INFO (default)\n- WARNING\n- ERROR\n- CRITICAL',
-            metavar='LEVEL',
+            "log level, potential values:\n- DEBUG\n- INFO (default)\n- WARNING\n- ERROR\n- CRITICAL",
+            metavar="LEVEL",
             required=False,
             type=str)
 
-        # It is not possible to handle all dataset downloads at once, there is a certain timeout using FTP to download from the Mainframe, it is then necessary to set up a number of datasets to download for the current execution, and download little by little. This also allows to limit CPU load on the Mainframe
-        optional.add_argument('-n',
-                              '--number',
-                              action='store',
-                              dest='number',
-                              help='number of datasets to be processed',
-                              metavar='NUMBER',
+        # It is not possible to handle all dataset downloads at once, there is
+        # a certain timeout using FTP to download from the Mainframe, it is
+        # then necessary to set up a number of datasets to download for the
+        # current execution, and download little by little. This also allows to
+        # limit CPU load on the Mainframe
+        optional.add_argument("-n",
+                              "--number",
+                              action="store",
+                              dest="number",
+                              help="number of datasets to be processed",
+                              metavar="NUMBER",
                               required=False,
                               type=int)
 
-        optional.add_argument('-p',
-                              '--prefix',
-                              action='store',
-                              dest='prefix',
-                              help='prefix used for VSAM datasets download',
-                              metavar='PREFIX',
+        optional.add_argument("-p",
+                              "--prefix",
+                              action="store",
+                              dest="prefix",
+                              help="prefix used for VSAM datasets download",
+                              metavar="PREFIX",
                               required=False,
                               type=str)
 
         optional.add_argument(
-            '-t',
-            '--tag',
-            action='store',
-            dest='tag',
-            help='add a tag to the name of the CSV backup and the log file',
-            metavar='TAG',
+            "-t",
+            "--tag",
+            action="store",
+            dest="tag",
+            help="add a tag to the name of the CSV backup and the log file",
+            metavar="TAG",
             required=False,
             type=str)
 
         optional.add_argument(
-            '-T',
-            '--test',
-            action='store_true',
-            dest='test',
+            "-T",
+            "--test",
+            action="store_true",
+            dest="test",
             help=
-            'flag used to modify the behavior of dsmigin, executes conversion only and delete the created file',
+            "flag used to modify the behavior of dsmigin, executes conversion only and delete the created file",
             required=False)
 
         # Other arguments
-        others.add_argument('-h',
-                            '--help',
-                            action='help',
-                            help='show this help message and exit')
+        others.add_argument("-h",
+                            "--help",
+                            action="help",
+                            help="show this help message and exit")
 
         others.add_argument(
-            '-v',
-            '--version',
-            action='version',
-            help='show the version message and exit',
-            version='%(prog)s {version}'.format(version=__version__))
+            "-v",
+            "--version",
+            action="version",
+            help="show the version message and exit",
+            version="%(prog)s {version}".format(version=__version__))
 
         # Do the parsing
         if len(sys.argv) == 1:
@@ -288,7 +295,7 @@ class Main():
             sys.exit(-1)
 
         # Analyze CSV file, making sure a file with .csv extension is specified
-        is_valid_ext = FileHandler().check_extension(args.csv, 'csv')
+        is_valid_ext = FileHandler().check_extension(args.csv, "csv")
         if is_valid_ext is False:
             Log().logger.critical(ErrorM.ABORT.value)
             sys.exit(-1)
@@ -334,13 +341,13 @@ class Main():
             Listcat(args.listcat_gen)
             Context().generations = args.generations
             Context().ip_address = args.ip_address
-            job = job_factory.create('listcat')
+            job = job_factory.create("listcat")
             jobs.append(job)
 
         if args.ftp:
             Context().ip_address = args.ip_address
             Context().prefix = args.prefix
-            job = job_factory.create('ftp')
+            job = job_factory.create("ftp")
             jobs.append(job)
 
         if args.migration:
@@ -349,7 +356,7 @@ class Main():
             Context().encoding_code = args.encoding_code
             Context().force = args.force
             Context().test = args.test
-            job = job_factory.create('migration')
+            job = job_factory.create("migration")
             jobs.append(job)
 
         return jobs
@@ -376,7 +383,7 @@ class Main():
 
         # Set log level and log oftools_dsmigin command as DEBUG level
         Log().set_level(args.log_level)
-        Log().logger.debug(' '.join((arg for arg in sys.argv)))
+        Log().logger.debug(" ".join((arg for arg in sys.argv)))
 
         # Initialize variables for program execution
         Context().initialization = args.initialization
@@ -386,9 +393,9 @@ class Main():
         count_dataset = 0
 
         # Initialize log file
-        log_file_name = 'oftools_dsmigin' + Context().tag + '_' + Context(
-        ).time_stamp('full') + '.log'
-        log_file_path = Context().log_directory + '/' + log_file_name
+        log_file_name = "oftools_dsmigin" + Context().tag + "_" + Context(
+        ).time_stamp("full") + ".log"
+        log_file_path = Context().log_directory + "/" + log_file_name
         Log().open_file(log_file_path)
 
         # Storage resource initialization
@@ -438,7 +445,7 @@ class Main():
                 # rc = statistics.run()
                 # if rc < 0:
                 #     Log().logger.error(
-                #         'An error occurred. Aborting statistics processing')
+                #         "An error occurred. Aborting statistics processing")
 
                 # Handle clear option
                 #TODO Code the Clear module

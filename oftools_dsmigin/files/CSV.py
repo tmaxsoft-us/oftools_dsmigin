@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""This modules runs all functions related to the CSV file.
+"""Run all tasks related to the CSV file.
 
 Typical usage example:
   csv = CSV(csv_path)
@@ -15,72 +15,108 @@ import sys
 
 # Owned modules
 from ..Context import Context
-from ..DatasetRecord import DatasetRecord
-from ..enums.MessageEnum import ErrorM, LogM
-from ..enums.MigrationEnum import MCol, Width
+from ..enums.CSV import MCol, Width
+from ..enums.Message import ErrorM, LogM
 from ..handlers.FileHandler import FileHandler
 from ..Log import Log
+from ..Record import Record
 
 
-class CSV(object):
-    """A class used to manipulate the CSV file, read and write tasks but also backup and other smaller features.
+class CSV():
+    """Manipulate the CSV file, like read and write tasks but also backup and
+    other smaller features.
 
     Attributes:
-        _headers_definition {list} -- List to store the headers from the program definition.
-        _columns_widths {list} -- List to store the width of each column of the CSV file.
+        _headers_definition {list} -- List to store the headers from the
+            program definition.
+        _columns_widths {list} -- List to store the width of each column of the
+            CSV file.
 
-        _file_path {string} -- Absolute path to the CSV file.
+        _file_path {string} -- Absolute path of the CSV file.
+        _file_name {string} -- Name of the CSV file.
         _root_file_name {string} -- Name of the CSV file, excluding extension.
 
+        _headers_formatted {list} --
+
     Methods:
-        __init__(csv_path) -- Initializes all attributes of the class.
-        _read() -- Reads the content of the CSV file and store the result in a list.
-        _backup() -- Creates a backup of the CSV file.
-        _check_column_headers(headers) -- Compares column headers in the CSV file to a definition in the program.
-        _update_columns(update_type, record) -- Add or remove columns from each dataset migration record.
-        write() -- Writes the dataset migration records changes to the CSV file.
-        format() --Format CSV columns adding trailing spaces.
+        __init__(csv_path) -- Initialize the class with its attributes.
+        _create_file() -- Create the CSV file when the user specifies the
+            --init flag.
+        _backup() -- Create a backup of the CSV file.
+        _read() -- Read the content of the CSV file and store the result in a
+            list.
+        _check_headers(headers) -- Compare column headers in the CSV file to the
+            reference.
+        write() -- Write the records to the CSV file.
+        add_records(args_dsn) -- Add manual dataset input to the records list.
     """
 
     def __init__(self, csv_path):
-        """Initializes the class with all the attributes.
+        """Initialize the class with all the attributes.
         """
-        self._headers_definition = [column.name for column in MCol]
         self._column_widths = [width.value for width in Width]
+
+        self._headers_formatted = Record(MCol)
+        self._headers_formatted.columns = [column.name for column in MCol]
+        self._headers_formatted = self._headers_formatted.format(
+            self._column_widths)
 
         self._file_path = os.path.expandvars(csv_path)
         self._file_path = os.path.abspath(self._file_path)
 
-        self._file_name = self._file_path.rsplit('/', 1)[1]
-        self._root_file_name = self._file_name.split('.')[0]
-
-        self._headers_formatted = DatasetRecord(MCol)
-        self._headers_formatted.columns = [column.name for column in MCol]
-        self._headers_formatted = self._headers_formatted.format(
-            self._column_widths)
+        self._file_name = self._file_path.rsplit("/", 1)[1]
+        self._root_file_name = self._file_name.split(".")[0]
 
         self._records_formatted = []
 
         if Context().initialization:
             self._create_file()
         else:
-            self._read()
             self._backup()
+            self._read()
 
     def _create_file(self):
-        """
+        """Create the CSV file when the user specifies the --init flag.
         """
         Log().logger.info(LogM.CSV_INIT.value % self._file_path)
         self.write()
 
-    def _read(self):
-        """Reads the content of the CSV file an store the data in a list.
+    def _backup(self):
+        """Create a backup of the CSV file.
 
-        First, this method opens the CSV file specified. Then, it checks that the CSV file is a dataset data file by checking the column headers of the file. It could be just the list of dataset names, or the full CSV file with all the columns filled. It saves the content of the CSV file to the list Context().records.
+        Pattern for backup file naming: name_tag_timestamp.csv. This method
+        copies the CSV file under the backup directory, which is under the
+        working directory.
+
+        Returns:
+            integer -- Return code of the method.
+        """
+        Log().logger.debug(LogM.CSV_BACKUP.value % self._file_path)
+
+        backup_file_name = self._root_file_name + Context().tag + "_" + Context(
+        ).time_stamp("full") + ".csv"
+        backup_file_path = Context(
+        ).csv_backups_directory + "/" + backup_file_name
+
+        status = FileHandler().copy_file(self._file_path, backup_file_path)
+
+        return status
+
+    def _read(self):
+        """Read the content of the CSV file an store the data in a list.
+
+        First, open the CSV file specified. Then, check that the CSV file is a
+        dataset data file by checking the column headers of the file. It could
+        be just the list of dataset names, or the full CSV file with all the
+        columns filled. Finally, save the content of the CSV file to the list
+        Context().records.
 
         Raises:
-            IndexError -- Exception is raised if there is too many elements in a given line.
-            FileNotFoundError -- Exception is raised if the CSV file has not been found in the read_file execution and consequently needs to be initialized.
+            IndexError -- Exception is raised if there is too many elements in
+                a given line.
+            FileNotFoundError -- Exception is raised if the CSV file has not
+                been found in the read_file execution and consequently needs to
+                be initialized.
         """
         line_number = 0
         Log().logger.debug(LogM.CSV_READ.value % self._file_path)
@@ -93,7 +129,7 @@ class CSV(object):
                     if line_number == 0:
                         self._check_headers(line)
                     else:
-                        record = DatasetRecord(MCol)
+                        record = Record(MCol)
                         record.columns = line
                         Context().records.append(record)
 
@@ -105,85 +141,74 @@ class CSV(object):
                 raise FileNotFoundError()
 
         except IndexError:
-            Log().logger.critical(ErrorM.INDEX_ELEMENTS_LINE.value % line_number)
+            Log().logger.critical(ErrorM.INDEX_ELEMENTS_LINE.value %
+                                  line_number)
             sys.exit(-1)
         except FileNotFoundError:
             Log().logger.critical(ErrorM.INIT.value %
-                                  'dataset migration CSV file')
+                                  "dataset migration CSV file")
             sys.exit(-1)
 
-    def _backup(self):
-        """Creates a backup of the CSV file.
-
-        Pattern for backup file naming: name_tag_timestamp.csv. This method copies the CSV file under the backup directory, which is under the working directory.
-
-        Returns:
-            integer -- Return code of the method.
-        """
-        Log().logger.debug(LogM.CSV_BACKUP.value % self._file_path)
-
-        backup_file_name = self._root_file_name + Context().tag + '_' + Context(
-        ).time_stamp('full') + '.csv'
-        backup_file_path = Context(
-        ).csv_backups_directory + '/' + backup_file_name
-
-        rc = FileHandler().copy_file(self._file_path, backup_file_path)
-
-        return rc
-
     def _check_headers(self, headers):
-        """Compares column headers in the CSV file to a definition in the program.
+        """Compare column headers in the CSV file to the reference.
 
-        First, this method checks if the number of columns match, and then if the column headers match as well. If that is not the case, it sends an error message and shows the program definition to the user.
+        First, check if the number of columns match, and then if the column
+        headers match as well. If that is not the case, it will send an error
+        message and shows the program definition to the user.
 
         Arguments:
-            headers {list} -- Columns headers extracted from the CSV file.
+            headers {list} -- Column headers extracted from the CSV file.
 
-        Raises:
-            SystemError -- Exception is raised if there is typo on one of the headers.
+        Returns:
+            integer - Return code of the method.
         """
-        issue_message = ''
+        issue_message = ""
         headers_definition = [column.name for column in MCol]
 
         if len(headers) < len(headers_definition):
             if len(headers) == 1:
                 Log().logger.debug(LogM.HEADERS_DSN_ONLY.value)
 
-            issue_message = 'Missing headers'
-            rc = -1
+            issue_message = "Missing headers"
+            status = -1
 
         elif len(headers) > len(headers_definition):
-            issue_message = 'Extra headers'
-            rc = -1
+            issue_message = "Extra headers"
+            status = -1
 
         else:
             header_typos = list(set(headers) - set(headers_definition))
 
             if len(header_typos) == 0:
-                rc = 0
+                status = 0
             elif len(header_typos) == 1:
-                issue_message = 'Typographical error on the header: ' + header_typos[
+                issue_message = "Typographical error on the header: " + header_typos[
                     0]
-                rc = -1
+                status = -1
             else:
-                issue_message = 'Typographical errors on the headers: ' + ', '.join(
+                issue_message = "Typographical errors on the headers: " + ", ".join(
                     header_typos)
-                rc = -1
+                status = -1
 
-        if rc == -1:
+        if status == -1:
             Log().logger.warning(ErrorM.HEADERS_WARNING.value % issue_message)
-            Log().logger.info(LogM.HEADERS_FILE.value % ', '.join(headers))
-            Log().logger.info(LogM.HEADERS_PROG.value % ', '.join(headers_definition))
+            Log().logger.info(LogM.HEADERS_FILE.value % ", ".join(headers))
+            Log().logger.info(LogM.HEADERS_PROG.value %
+                              ", ".join(headers_definition))
 
             Log().logger.info(LogM.HEADERS_FIX.value)
-            rc = 0
+            status = 0
         else:
             Log().logger.debug(LogM.HEADERS_OK.value)
 
-    def write(self, index=None):
-        """Writes the dataset migration records to the CSV file.
+        return status
 
-        Updates the formatted records if any changes and then writes to the CSV file, the headers in the first row and then the migration records.
+    def write(self, index=None):
+        """Writes the records to the CSV file.
+
+        Format the updated record if any changes and then write to the CSV
+        file, the headers in the first row and then the dataset migration
+        records.
 
         Arguments:
             index {integer} -- Index of the record to be formatted.
@@ -198,20 +223,20 @@ class CSV(object):
             self._records_formatted[index] = record.format(self._column_widths)
 
         content = [self._headers_formatted] + list(self._records_formatted)
-        rc = FileHandler().write_file(self._file_path, content)
+        status = FileHandler().write_file(self._file_path, content)
 
-        return rc
+        return status
 
     def add_records(self, args_dsn):
-        """Add manual dataset input to the storage resource.
+        """Add manual dataset input to the records list.
 
         Arguments:
             args_dsn {string} -- Dataset name manual input if any.
         """
         if args_dsn:
-            dataset_names = args_dsn.split(':')
+            dataset_names = args_dsn.split(":")
             for dsn in dataset_names:
-                record = DatasetRecord(MCol)
+                record = Record(MCol)
                 record.columns = [dsn]
 
                 Context().records.append(record)

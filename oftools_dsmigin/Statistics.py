@@ -17,7 +17,7 @@ import os
 
 # Owned modules
 from .Context import Context
-from .MigrationEnum import Col
+from .enums.CSV import MCol
 
 
 class Statistics(object):
@@ -90,7 +90,7 @@ class Statistics(object):
     def _analyze(self):
         """Analyze the CSV file and compute statistics. Store all the statistics in a list.
 
-        It currently supports: 
+        It currently supports:
             - Successful downloads, Success download rate
             - Failed downloads, Fail download rate
             - Total download time, Average download time

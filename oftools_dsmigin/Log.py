@@ -69,16 +69,16 @@ class Log(metaclass=SingletonType):
         """Initializes the class with all the attributes.
         """
         self._level_dict = {
-            'DEBUG': logging.DEBUG,
-            'INFO': logging.INFO,
-            'WARNING': logging.WARNING,
-            'ERROR': logging.ERROR,
-            'CRITICAL': logging.CRITICAL
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
         }
-        self._level = ''
+        self._level = ""
 
         self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(self._level_dict['INFO'])
+        self._logger.setLevel(self._level_dict["INFO"])
 
         fmt = "%(asctime)-8s [%(levelname)-8s] %(message)s"
         self._formatter = logging.Formatter(fmt, datefmt="%H:%M:%S")
@@ -106,7 +106,7 @@ class Log(metaclass=SingletonType):
         Arguments:
             level {string} -- User input for log level.
         """
-        if level == 'DEBUG':
+        if level == "DEBUG":
             fmt = "%(asctime)-8s [%(levelname)-8s] %(message)s (%(module)s:%(lineno)s)"
             self._formatter = logging.Formatter(fmt, datefmt="%H:%M:%S")
 
@@ -121,13 +121,13 @@ class Log(metaclass=SingletonType):
 
             self._stream_handler_out = logging.StreamHandler(stream=sys.stdout)
             self._stream_handler_out.setFormatter(self._custom_formatter)
-            self._stream_handler_out.setLevel(self._level_dict['DEBUG'])
+            self._stream_handler_out.setLevel(self._level_dict["DEBUG"])
             self._stream_handler_out.addFilter(LogFilter())
             self._logger.addHandler(self._stream_handler_out)
 
             self._stream_handler_err = logging.StreamHandler(stream=sys.stderr)
             self._stream_handler_err.setFormatter(self._custom_formatter)
-            self._stream_handler_err.setLevel(self._level_dict['ERROR'])
+            self._stream_handler_err.setLevel(self._level_dict["ERROR"])
             self._logger.addHandler(self._stream_handler_err)
 
     def close_stream(self):
@@ -153,8 +153,8 @@ class Log(metaclass=SingletonType):
         try:
             if self._file_handler is None:
                 self._file_handler = logging.FileHandler(filename=file_path,
-                                                         mode='a',
-                                                         encoding='utf-8')
+                                                         mode="a",
+                                                         encoding="utf-8")
                 self._file_handler.setFormatter(self._formatter)
                 self._logger.addHandler(self._file_handler)
         except FileNotFoundError:
@@ -175,13 +175,13 @@ class CustomFormatter(logging.Formatter):
     """
 
     # DEBUG & INFO
-    white = '\x1b[39m'
+    white = "\x1b[39m"
     # WARNING
-    yellow = '\x1b[33m'
+    yellow = "\x1b[33m"
     # ERROR & CRITICAL
-    red = '\x1b[91m'
+    red = "\x1b[91m"
 
-    reset = '\x1b[0m'
+    reset = "\x1b[0m"
 
     def __init__(self, fmt, datefmt):
         """Initializes the class with all the attributes.
